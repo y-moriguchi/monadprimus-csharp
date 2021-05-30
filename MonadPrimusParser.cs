@@ -35,17 +35,17 @@ namespace Morilib
             /// <summary>
             /// A regex pattern of skip string.
             /// </summary>
-            public Regex Skip { get; private set; }
+            public Parser<string> Skip { get; private set; }
 
             /// <summary>
             /// constructs initial configuration.
             /// </summary>
             /// <param name="parseString">string to parse</param>
             /// <param name="skip">pattern of skip</param>
-            public Config(string parseString, string skip)
+            public Config(string parseString, Parser<string> skip)
             {
                 ParseString = parseString;
-                Skip = skip == null ? null : new Regex(skip);
+                Skip = skip == null ? null : skip;
             }
 
             /// <summary>
@@ -134,7 +134,7 @@ namespace Morilib
         /// <param name="position">starting position of parsing</param>
         /// <param name="skip">skip pattern</param>
         /// <returns></returns>
-        public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position, string skip)
+        public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position, Parser<string> skip)
         {
             CheckNull(parser, nameof(parser));
             CheckNull(toParse, nameof(toParse));
@@ -147,12 +147,40 @@ namespace Morilib
 
         /// <summary>
         /// runs the parser with given condition.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="toParse">string to parse</param>
+        /// <param name="position">starting position of parsing</param>
+        /// <param name="skip">skip regex pattern</param>
+        /// <returns></returns>
+        public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position, string skip)
+        {
+            return parser.Run(toParse, position, Regex(skip));
+        }
+
+        /// <summary>
+        /// runs the parser with given condition.
         /// Starting position is beginning of the string.
         /// </summary>
         /// <typeparam name="T">type</typeparam>
         /// <param name="parser">parser</param>
         /// <param name="toParse">string to parse</param>
         /// <param name="skip">skip pattern</param>
+        /// <returns></returns>
+        public static Result<T> Run<T>(this Parser<T> parser, string toParse, Parser<string> skip)
+        {
+            return parser.Run(toParse, 0, skip);
+        }
+
+        /// <summary>
+        /// runs the parser with given condition.
+        /// Starting position is beginning of the string.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="toParse">string to parse</param>
+        /// <param name="skip">skip regex pattern</param>
         /// <returns></returns>
         public static Result<T> Run<T>(this Parser<T> parser, string toParse, string skip)
         {
@@ -169,7 +197,7 @@ namespace Morilib
         /// <returns></returns>
         public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position)
         {
-            return parser.Run(toParse, position, null);
+            return parser.Run(toParse, position, (Parser<string>)null);
         }
 
         /// <summary>
@@ -182,22 +210,20 @@ namespace Morilib
         /// <returns></returns>
         public static Result<T> Run<T>(this Parser<T> parser, string toParse)
         {
-            return parser.Run(toParse, 0, null);
+            return parser.Run(toParse, 0, (Parser<string>)null);
         }
 
-        private static int Skip(string aString, int position, Regex regex)
+        private static int Skip(string aString, int position, Parser<string> skip)
         {
-            if (regex == null)
+            if (skip == null)
             {
                 return position;
             }
             else
             {
-                var restString = aString.Substring(position);
-                var matchRe = regex.Match(restString);
-                var positionNew = position + (matchRe.Success && matchRe.Index == 0 ? matchRe.Length : 0);
+                var result = skip.Run(aString, position);
 
-                return positionNew;
+                return result.IsError ? position : result.Position;
             }
         }
 
@@ -599,6 +625,19 @@ namespace Morilib
         }
 
         /// <summary>
+        /// repeats the parser one or more times.
+        /// The values are disposed.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="aggregator">aggragator function</param>
+        /// <returns>synchronized parser</returns>
+        public static Parser<T> OneOrMore<T>(this Parser<T> parser)
+        {
+            return OneOrMore(parser, (a, b) => a);
+        }
+
+        /// <summary>
         /// repeats the parser zero or more times.
         /// The values are aggregated from left to right.
         /// If the parser matched zero times, the value will be the default value.
@@ -625,6 +664,19 @@ namespace Morilib
         public static Parser<T> ZeroOrMore<T>(this Parser<T> parser, Func<T, T, T> aggregator)
         {
             return ZeroOrMore(parser, aggregator, default(T));
+        }
+
+        /// <summary>
+        /// repeats the parser zero or more times.
+        /// The values are disposed.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="aggregator">aggragator function</param>
+        /// <returns>synchronized parser</returns>
+        public static Parser<T> ZeroOrMore<T>(this Parser<T> parser)
+        {
+            return ZeroOrMore(parser, (x, y) => x);
         }
 
         /// <summary>
@@ -675,12 +727,46 @@ namespace Morilib
         }
 
         /// <summary>
+        /// concatenates two parsers and returns the second value.
+        /// </summary>
+        /// <typeparam name="T">type of first parser</typeparam>
+        /// <typeparam name="U">type of second parser</typeparam>
+        /// <param name="parser1">first parser</param>
+        /// <param name="parser2">second parser</param>
+        /// <returns>concatenated parser</returns>
+        public static Parser<U> Concat<T, U>(this Parser<T> parser1, Parser<U> parser2)
+        {
+            CheckNull(parser1, nameof(parser1));
+            CheckNull(parser2, nameof(parser2));
+            return from a in parser1
+                   from b in parser2
+                   select b;
+        }
+
+        /// <summary>
+        /// concatenates two parsers and returns the first value.
+        /// </summary>
+        /// <typeparam name="T">type of first parser</typeparam>
+        /// <typeparam name="U">type of second parser</typeparam>
+        /// <param name="parser1">first parser</param>
+        /// <param name="parser2">second parser</param>
+        /// <returns>concatenated parser</returns>
+        public static Parser<T> ConcatLeft<T, U>(this Parser<T> parser1, Parser<U> parser2)
+        {
+            CheckNull(parser1, nameof(parser1));
+            CheckNull(parser2, nameof(parser2));
+            return from a in parser1
+                   from b in parser2
+                   select a;
+        }
+
+        /// <summary>
         /// A method which can refer a return values of the function itself.<br>
         /// This method will be used for defining a expression with recursion.
         /// </summary>
         /// <param name="func">a function which is a return value itself</param>
         /// <returns>first parser</returns>
-        public static Parser<T> Letrec1<T>(Func<Parser<T>, Parser<T>> func)
+        public static Parser<T> Letrec<T>(Func<Parser<T>, Parser<T>> func)
         {
             Parser<T> delay = null;
             Parser<T> memo = null;
@@ -704,7 +790,7 @@ namespace Morilib
         /// <param name="func1">a function whose first argument is a return value itself</param>
         /// <param name="func2">a function whose second argument is a return value itself</param>
         /// <returns>first parser</returns>
-        public static Parser<T> Letrec2<T, U>(Func<Parser<T>, Parser<U>, Parser<T>> func1, Func<Parser<T>, Parser<U>, Parser<U>> func2)
+        public static Parser<T> Letrec<T, U>(Func<Parser<T>, Parser<U>, Parser<T>> func1, Func<Parser<T>, Parser<U>, Parser<U>> func2)
         {
             Parser<T> delay1 = null;
             Parser<T> memo1 = null;
@@ -739,9 +825,9 @@ namespace Morilib
         /// <param name="func1">a function whose first argument is a return value itself</param>
         /// <param name="func2">a function whose second argument is a return value itself</param>
         /// <returns>first parser</returns>
-        public static Parser<T> Letrec2<T>(Func<Parser<T>, Parser<T>, Parser<T>> func1, Func<Parser<T>, Parser<T>, Parser<T>> func2)
+        public static Parser<T> Letrec<T>(Func<Parser<T>, Parser<T>, Parser<T>> func1, Func<Parser<T>, Parser<T>, Parser<T>> func2)
         {
-            return Letrec2<T, T>(func1, func2);
+            return Letrec<T, T>(func1, func2);
         }
 
         /// <summary>
@@ -752,7 +838,7 @@ namespace Morilib
         /// <param name="func2">a function whose second argument is a return value itself</param>
         /// <param name="func3">a function whose third argument is a return value itself</param>
         /// <returns>first parser</returns>
-        public static Parser<T> Letrec3<T, U, V>(
+        public static Parser<T> Letrec<T, U, V>(
             Func<Parser<T>, Parser<U>, Parser<V>, Parser<T>> func1,
             Func<Parser<T>, Parser<U>, Parser<V>, Parser<U>> func2,
             Func<Parser<T>, Parser<U>, Parser<V>, Parser<V>> func3)
@@ -802,12 +888,12 @@ namespace Morilib
         /// <param name="func2">a function whose second argument is a return value itself</param>
         /// <param name="func3">a function whose third argument is a return value itself</param>
         /// <returns>first parser</returns>
-        public static Parser<T> Letrec3<T>(
+        public static Parser<T> Letrec<T>(
             Func<Parser<T>, Parser<T>, Parser<T>, Parser<T>> func1,
             Func<Parser<T>, Parser<T>, Parser<T>, Parser<T>> func2,
             Func<Parser<T>, Parser<T>, Parser<T>, Parser<T>> func3)
         {
-            return Letrec3<T, T, T>(func1, func2, func3);
+            return Letrec<T, T, T>(func1, func2, func3);
         }
     }
 }

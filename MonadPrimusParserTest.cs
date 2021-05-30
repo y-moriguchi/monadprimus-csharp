@@ -10,7 +10,7 @@ namespace Morilib
     [TestClass]
     public class MonadPrimusParserTest
     {
-        private void Match<T>(Parser<T> expr, string toParse, string skip, int position, int positionExpected, T valueExpected)
+        private void Match<T>(Parser<T> expr, string toParse, Parser<string> skip, int position, int positionExpected, T valueExpected)
         {
             var config = new Config(toParse, skip);
             var result = expr(config, position);
@@ -20,12 +20,22 @@ namespace Morilib
             Assert.AreEqual(valueExpected, result.Value);
         }
 
-        private void NoMatch<T>(Parser<T> expr, string toParse, string skip, int position, string errorMessage)
+        private void NoMatch<T>(Parser<T> expr, string toParse, Parser<string> skip, int position, string errorMessage)
         {
             var config = new Config(toParse, skip);
             var result = expr(config, position);
 
             Assert.AreEqual(errorMessage, result.ErrorMessage);
+        }
+
+        private void Match<T>(Parser<T> expr, string toParse, string skip, int position, int positionExpected, T valueExpected)
+        {
+            Match(expr, toParse, Regex(skip), position, positionExpected, valueExpected);
+        }
+
+        private void NoMatch<T>(Parser<T> expr, string toParse, string skip, int position, string errorMessage)
+        {
+            NoMatch(expr, toParse, Regex(skip), position, errorMessage);
         }
 
         private void Match<T>(Parser<T> expr, string toParse, int position, int positionExpected, T valueExpected)
@@ -50,10 +60,15 @@ namespace Morilib
         public void StrTest()
         {
             var expr1 = Str("765");
+            var skip2 = Letrec<string>(x => from a in Str("#|")
+                                            from b in Str("|#").Not().Concat(x.Choice(Regex("."))).ZeroOrMore()
+                                            from c in Str("|#")
+                                            select b);
 
             Match(expr1, "000765", 3, 6, "765");
             NoMatch(expr1, "000961", 3, "Does not match 765");
             Match(expr1, "000   765", " +", 3, 9, "765");
+            Match(expr1, "000#|aaa#|aaa|#aaa|#765", skip2, 3, 23, "765");
         }
 
         [TestMethod]
@@ -218,10 +233,10 @@ namespace Morilib
         [TestMethod]
         public void Letrec1Test()
         {
-            var expr1 = Letrec1<string>(x => (from a in Str("(")
-                                              from b in x.Choice(Str(""))
-                                              from c in Str(")")
-                                              select a + b + c).SelectError(t => "Unbalanced parenthesis"));
+            var expr1 = Letrec<string>(x => (from a in Str("(")
+                                             from b in x.Choice(Str(""))
+                                             from c in Str(")")
+                                             select a + b + c).SelectError(t => "Unbalanced parenthesis"));
 
             Match(expr1, "((()))", 0, 6, "((()))");
             NoMatch(expr1, "((())", 0, "Unbalanced parenthesis");
@@ -230,14 +245,14 @@ namespace Morilib
         [TestMethod]
         public void Letrec2Test()
         {
-            var expr1 = Letrec2<string, string>((x, y) => from a in Str("(")
-                                                          from b in y.Choice(Str(""))
-                                                          from c in Str(")")
-                                                          select a + b + c,
-                                                (x, y) => from a in Str("[")
-                                                          from b in x
-                                                          from c in Str("]")
-                                                          select a + b + c);
+            var expr1 = Letrec<string, string>((x, y) => from a in Str("(")
+                                                         from b in y.Choice(Str(""))
+                                                         from c in Str(")")
+                                                         select a + b + c,
+                                               (x, y) => from a in Str("[")
+                                                         from b in x
+                                                         from c in Str("]")
+                                                         select a + b + c);
 
             Match(expr1, "([([()])])", 0, 10, "([([()])])");
             NoMatch(expr1, "([([()])]", 0, "Does not match )");
@@ -255,13 +270,13 @@ namespace Morilib
         [TestMethod]
         public void STest1()
         {
-            var expr1 = Letrec2<dynamic>((x, y) => (from a in Str("(")
-                                                    from b in y
-                                                    from c in Str(")")
-                                                    select b).Choice(Regex("[^\\s\\(\\)]+").Select(d => (dynamic)d)),
-                                         (x, y) => (from a in x
-                                                    from b in y
-                                                    select Cons(a, b)).Choice(Str("").Select(d => (dynamic)null)));
+            var expr1 = Letrec<dynamic>((x, y) => (from a in Str("(")
+                                                   from b in y
+                                                   from c in Str(")")
+                                                   select b).Choice(Regex("[^\\s\\(\\)]+").Select(d => (dynamic)d)),
+                                        (x, y) => (from a in x
+                                                   from b in y
+                                                   select Cons(a, b)).Choice(Str("").Select(d => (dynamic)null)));
 
             var result = expr1.Run("(+ 1 (* 2 3))", " +");
             Assert.AreEqual("+", result.Value.Car);
@@ -288,9 +303,9 @@ namespace Morilib
         [TestMethod]
         public void CalcTest()
         {
-            var expr1 = Letrec3<double>((x, y, z) => y.Delimit(Regex("[\\+\\-]"), Operator),
+            var expr1 = Letrec<double>((x, y, z) => y.Delimit(Regex("[\\+\\-]"), Operator),
                 (x, y, z) => z.Delimit(Regex("[\\*\\/]"), Operator),
-                (x, y, z) => Real().Choice(from a in Str("(") from b in x from c in Str(")") select b));
+                (x, y, z) => Real().Choice(Str("(").Concat(x).ConcatLeft(Str(")"))));
 
             Assert.AreEqual(expr1.Run("1-2*3", " +").Value, -5);
             Assert.AreEqual(expr1.Run(" ( 1 - 2) * 3 ", " +").Value, -3);
@@ -302,7 +317,7 @@ namespace Morilib
             var expr1 = from a1 in Str("<")
                         from a2 in Regex("[A-Za-z0-9]+")
                         from a3 in Str(">")
-                        from a4 in (from b1 in (from c1 in Str("</") from c2 in IgnoreCase(a2) from c3 in Str(">") select c2).Not()
+                        from a4 in (from b1 in Str("</").Concat(IgnoreCase(a2)).ConcatLeft(Str(">")).Not()
                                     from b2 in Regex(".")
                                     select b2).ZeroOrMore((a, b) => a + b, "")
                         from a5 in Str("</")
@@ -318,16 +333,16 @@ namespace Morilib
         [TestMethod]
         public void TagTest2()
         {
-            var expr1 = Letrec1<string>(x => from a1 in Str("<")
-                                             from a2 in Regex("[A-Za-z0-9]+")
-                                             from a3 in Str(">")
-                                             from a4 in (from b1 in (from c1 in Str("</") from c2 in IgnoreCase(a2) from c3 in Str(">") select c2).Not()
-                                                         from b2 in x.Choice(Regex("."))
-                                                         select b2).ZeroOrMore((a, b) => a + b, "")
-                                             from a5 in Str("</")
-                                             from a6 in IgnoreCase(a2)
-                                             from a7 in Str(">")
-                                             select a4);
+            var expr1 = Letrec<string>(x => from a1 in Str("<")
+                                            from a2 in Regex("[A-Za-z0-9]+")
+                                            from a3 in Str(">")
+                                            from a4 in (from b1 in Str("</").Concat(IgnoreCase(a2)).ConcatLeft(Str(">")).Not()
+                                                        from b2 in x.Choice(Regex("."))
+                                                        select b2).ZeroOrMore((a, b) => a + b, "")
+                                            from a5 in Str("</")
+                                            from a6 in IgnoreCase(a2)
+                                            from a7 in Str(">")
+                                            select a4);
 
             Assert.AreEqual(expr1.Run("<script>a<a>a</a>a<b>a</b>aa</script>").Value, "aaaaaa");
             Assert.AreEqual(expr1.Run("<a></a>").Value, "");
