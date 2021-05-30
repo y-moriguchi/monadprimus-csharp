@@ -12,17 +12,17 @@ namespace Morilib
     {
         private void Match<T>(Parser<T> expr, string toParse, Parser<string> skip, int position, int positionExpected, T valueExpected)
         {
-            var config = new Config(toParse, skip);
+            var config = new Env(toParse, skip);
             var result = expr(config, position);
 
-            Assert.IsNull(result.ErrorMessage);
+            Assert.IsNull(result.ErrorMessage, result.ErrorMessage);
             Assert.AreEqual(positionExpected, result.Position);
             Assert.AreEqual(valueExpected, result.Value);
         }
 
         private void NoMatch<T>(Parser<T> expr, string toParse, Parser<string> skip, int position, string errorMessage)
         {
-            var config = new Config(toParse, skip);
+            var config = new Env(toParse, skip);
             var result = expr(config, position);
 
             Assert.AreEqual(errorMessage, result.ErrorMessage);
@@ -40,7 +40,7 @@ namespace Morilib
 
         private void Match<T>(Parser<T> expr, string toParse, int position, int positionExpected, T valueExpected)
         {
-            var config = new Config(toParse);
+            var config = new Env(toParse);
             var result = expr(config, position);
 
             Assert.IsNull(result.ErrorMessage);
@@ -50,7 +50,7 @@ namespace Morilib
 
         private void NoMatch<T>(Parser<T> expr, string toParse, int position, string errorMessage)
         {
-            var config = new Config(toParse);
+            var config = new Env(toParse);
             var result = expr(config, position);
 
             Assert.AreEqual(errorMessage, result.ErrorMessage);
@@ -346,6 +346,18 @@ namespace Morilib
 
             Assert.AreEqual(expr1.Run("<script>a<a>a</a>a<b>a</b>aa</script>").Value, "aaaaaa");
             Assert.AreEqual(expr1.Run("<a></a>").Value, "");
+        }
+
+        [TestMethod]
+        public void LocalTest()
+        {
+            var expr1 = from x in Str("a")
+                        from y in Local(Str("b").Concat(Str("c")), s => new Env(s.ParseString, null))
+                        from z in Str("d")
+                        select y;
+
+            Match(expr1, "abc    d", " +", 0, 8, "c");
+            NoMatch(expr1, "ab c    d", 0, "Does not match c");
         }
     }
 }

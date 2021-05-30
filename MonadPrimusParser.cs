@@ -17,15 +17,15 @@ namespace Morilib
         /// Parser delegate.
         /// </summary>
         /// <typeparam name="T">type</typeparam>
-        /// <param name="config">initial parameter</param>
+        /// <param name="env">initial environment</param>
         /// <param name="position">position</param>
         /// <returns>result of parsing</returns>
-        public delegate Result<T> Parser<T>(Config config, int position);
+        public delegate Result<T> Parser<T>(Env env, int position);
 
         /// <summary>
-        /// Initial configuration.
+        /// Initial environment.
         /// </summary>
-        public class Config
+        public class Env
         {
             /// <summary>
             /// A string to parse.
@@ -38,21 +38,21 @@ namespace Morilib
             public Parser<string> Skip { get; private set; }
 
             /// <summary>
-            /// constructs initial configuration.
+            /// constructs initial environment.
             /// </summary>
             /// <param name="parseString">string to parse</param>
             /// <param name="skip">pattern of skip</param>
-            public Config(string parseString, Parser<string> skip)
+            public Env(string parseString, Parser<string> skip)
             {
                 ParseString = parseString;
                 Skip = skip == null ? null : skip;
             }
 
             /// <summary>
-            /// constructs initial configuration with no skip pattern.
+            /// constructs initial environment with no skip pattern.
             /// </summary>
             /// <param name="parseString">string to parse</param>
-            public Config(string parseString)
+            public Env(string parseString)
             {
                 ParseString = parseString;
                 Skip = null;
@@ -66,9 +66,9 @@ namespace Morilib
         public class Result<T>
         {
             /// <summary>
-            /// Initial configuration.
+            /// Initial environment.
             /// </summary>
-            public Config Config { get; private set; }
+            public Env Env { get; private set; }
 
             /// <summary>
             /// Position of parsing.
@@ -96,12 +96,12 @@ namespace Morilib
             /// <summary>
             /// constructs result of parsing.
             /// </summary>
-            /// <param name="config">initial configuration</param>
+            /// <param name="env">initial environment</param>
             /// <param name="position">position</param>
             /// <param name="value">value</param>
-            public Result(Config config, int position, T value)
+            public Result(Env env, int position, T value)
             {
-                Config = config;
+                Env = env;
                 Position = position;
                 Value = value;
                 ErrorMessage = null;
@@ -142,7 +142,7 @@ namespace Morilib
             {
                 throw new ArgumentOutOfRangeException("invalid position");
             }
-            return parser(new Config(toParse, skip), position);
+            return parser(new Env(toParse, skip), position);
         }
 
         /// <summary>
@@ -236,14 +236,14 @@ namespace Morilib
         public static Parser<string> Str(string aString, string errorMessage)
         {
             CheckNull(aString, nameof(aString));
-            return (config, position) =>
+            return (env, position) =>
             {
-                var pos2 = Skip(config.ParseString, position, config.Skip);
-                var toParse = config.ParseString;
+                var pos2 = Skip(env.ParseString, position, env.Skip);
+                var toParse = env.ParseString;
 
                 if (toParse.Length >= pos2 + aString.Length && toParse.Substring(pos2, aString.Length) == aString)
                 {
-                    return new Result<string>(config, pos2 + aString.Length, aString);
+                    return new Result<string>(env, pos2 + aString.Length, aString);
                 }
                 else
                 {
@@ -273,14 +273,14 @@ namespace Morilib
             CheckNull(aString, nameof(aString));
             var aStringCase = aString.ToLower();
 
-            return (config, position) =>
+            return (env, position) =>
             {
-                var pos2 = Skip(config.ParseString, position, config.Skip);
-                var toParse = config.ParseString;
+                var pos2 = Skip(env.ParseString, position, env.Skip);
+                var toParse = env.ParseString;
 
                 if (toParse.Length >= pos2 + aString.Length && toParse.Substring(pos2, aString.Length).ToLower() == aStringCase)
                 {
-                    return new Result<string>(config, pos2 + aString.Length, toParse.Substring(pos2, aString.Length));
+                    return new Result<string>(env, pos2 + aString.Length, toParse.Substring(pos2, aString.Length));
                 }
                 else
                 {
@@ -308,16 +308,16 @@ namespace Morilib
         public static Parser<string> Regex(string pattern, string errorMessage)
         {
             CheckNull(pattern, nameof(pattern));
-            return (config, position) =>
+            return (env, position) =>
             {
-                var pos2 = Skip(config.ParseString, position, config.Skip);
-                var toParse = config.ParseString.Substring(pos2);
+                var pos2 = Skip(env.ParseString, position, env.Skip);
+                var toParse = env.ParseString.Substring(pos2);
                 var regex = new Regex(pattern);
                 var match = regex.Match(toParse);
 
                 if (match.Success && match.Index == 0)
                 {
-                    return new Result<string>(config, pos2 + match.Length, match.Value);
+                    return new Result<string>(env, pos2 + match.Length, match.Value);
                 }
                 else
                 {
@@ -343,13 +343,13 @@ namespace Morilib
         /// <returns>parser of mathing the end of string</returns>
         public static Parser<int> End(string errorMessage)
         {
-            return (config, position) =>
+            return (env, position) =>
             {
-                var pos2 = Skip(config.ParseString, position, config.Skip);
+                var pos2 = Skip(env.ParseString, position, env.Skip);
 
-                if (pos2 >= config.ParseString.Length)
+                if (pos2 >= env.ParseString.Length)
                 {
-                    return new Result<int>(config, pos2, 0);
+                    return new Result<int>(env, pos2, 0);
                 }
                 else
                 {
@@ -394,7 +394,7 @@ namespace Morilib
         /// <returns>unit monad</returns>
         public static Parser<T> ToParser<T>(this T value)
         {
-            return (config, position) => new Result<T>(config, position, value);
+            return (env, position) => new Result<T>(env, position, value);
         }
 
         /// <summary>
@@ -409,9 +409,9 @@ namespace Morilib
         {
             CheckNull(parser, nameof(parser));
             CheckNull(f, nameof(f));
-            return (config, position) =>
+            return (env, position) =>
             {
-                var result = parser(config, position);
+                var result = parser(env, position);
 
                 if (result.IsError)
                 {
@@ -419,7 +419,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return new Result<U>(result.Config, result.Position, f(result.Value));
+                    return new Result<U>(env, result.Position, f(result.Value));
                 }
             };
         }
@@ -436,9 +436,9 @@ namespace Morilib
         {
             CheckNull(parser1, nameof(parser1));
             CheckNull(m, nameof(m));
-            return (config, position) =>
+            return (env, position) =>
             {
-                var result1 = parser1(config, position);
+                var result1 = parser1(env, position);
 
                 if (result1.IsError)
                 {
@@ -446,7 +446,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return m(result1.Value)(result1.Config, result1.Position);
+                    return m(result1.Value)(env, result1.Position);
                 }
             };
         }
@@ -480,9 +480,9 @@ namespace Morilib
         {
             CheckNull(parser, nameof(parser));
             CheckNull(f, nameof(f));
-            return (config, position) =>
+            return (env, position) =>
             {
-                var result = parser(config, position);
+                var result = parser(env, position);
 
                 if (result.IsError)
                 {
@@ -526,11 +526,11 @@ namespace Morilib
         {
             CheckNull(parser1, nameof(parser1));
             CheckNull(parser2, nameof(parser2));
-            return (config, position) =>
+            return (env, position) =>
             {
-                var result1 = parser1(config, position);
+                var result1 = parser1(env, position);
 
-                return result1.IsError ? parser2(config, position) : result1;
+                return result1.IsError ? parser2(env, position) : result1;
             };
         }
 
@@ -545,10 +545,10 @@ namespace Morilib
         public static Parser<T> Option<T>(this Parser<T> parser, T defaultValue)
         {
             CheckNull(parser, nameof(parser));
-            return (config, position) =>
+            return (env, position) =>
             {
-                Result<T> result = new Result<T>(config, position, defaultValue);
-                Result<T> resultNew = parser(result.Config, result.Position);
+                Result<T> result = new Result<T>(env, position, defaultValue);
+                Result<T> resultNew = parser(env, result.Position);
 
                 return resultNew.IsError ? result : resultNew;
             };
@@ -687,9 +687,9 @@ namespace Morilib
         /// <returns>syncronized parser</returns>
         public static Parser<T> Lookahead<T>(this Parser<T> parser)
         {
-            return (config, position) =>
+            return (env, position) =>
             {
-                var result = parser(config, position);
+                var result = parser(env, position);
 
                 if(result.IsError)
                 {
@@ -697,7 +697,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return new Result<T>(result.Config, position, result.Value);
+                    return new Result<T>(env, position, result.Value);
                 }
             };
         }
@@ -711,13 +711,13 @@ namespace Morilib
         /// <returns>syncronized parser</returns>
         public static Parser<T> Not<T>(this Parser<T> parser)
         {
-            return (config, position) =>
+            return (env, position) =>
             {
-                var result = parser(config, position);
+                var result = parser(env, position);
 
                 if (result.IsError)
                 {
-                    return new Result<T>(config, position, default(T));
+                    return new Result<T>(env, position, default(T));
                 }
                 else
                 {
@@ -761,6 +761,18 @@ namespace Morilib
         }
 
         /// <summary>
+        /// changes environment locally.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="f">environment changing function</param>
+        /// <returns></returns>
+        public static Parser<T> Local<T>(Parser<T> parser, Func<Env, Env> f)
+        {
+            return (env, position) => parser(f(env), position);
+        }
+
+        /// <summary>
         /// A method which can refer a return values of the function itself.<br>
         /// This method will be used for defining a expression with recursion.
         /// </summary>
@@ -772,13 +784,13 @@ namespace Morilib
             Parser<T> memo = null;
 
             CheckNull(func, nameof(func));
-            delay = (config, position) =>
+            delay = (env, position) =>
             {
                 if (memo == null)
                 {
                     memo = func(delay);
                 }
-                return memo(config, position);
+                return memo(env, position);
             };
             return delay;
         }
@@ -799,21 +811,21 @@ namespace Morilib
 
             CheckNull(func1, nameof(func1));
             CheckNull(func2, nameof(func2));
-            delay1 = (config, position) =>
+            delay1 = (env, position) =>
             {
                 if (memo1 == null)
                 {
                     memo1 = func1(delay1, delay2);
                 }
-                return memo1(config, position);
+                return memo1(env, position);
             };
-            delay2 = (config, position) =>
+            delay2 = (env, position) =>
             {
                 if (memo2 == null)
                 {
                     memo2 = func2(delay1, delay2);
                 }
-                return memo2(config, position);
+                return memo2(env, position);
             };
             return delay1;
         }
@@ -853,29 +865,29 @@ namespace Morilib
             CheckNull(func1, nameof(func1));
             CheckNull(func2, nameof(func2));
             CheckNull(func3, nameof(func3));
-            delay1 = (config, position) =>
+            delay1 = (env, position) =>
             {
                 if (memo1 == null)
                 {
                     memo1 = func1(delay1, delay2, delay3);
                 }
-                return memo1(config, position);
+                return memo1(env, position);
             };
-            delay2 = (config, position) =>
+            delay2 = (env, position) =>
             {
                 if (memo2 == null)
                 {
                     memo2 = func2(delay1, delay2, delay3);
                 }
-                return memo2(config, position);
+                return memo2(env, position);
             };
-            delay3 = (config, position) =>
+            delay3 = (env, position) =>
             {
                 if (memo3 == null)
                 {
                     memo3 = func3(delay1, delay2, delay3);
                 }
-                return memo3(config, position);
+                return memo3(env, position);
             };
             return delay1;
         }
