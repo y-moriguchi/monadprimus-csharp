@@ -334,7 +334,7 @@ namespace Morilib
         public void StateToStateTest()
         {
             var m11 = 765.ToState<string, int>();
-            var res11 = m11.RunState("s1");
+            var res11 = m11("s1");
 
             Assert.AreEqual("s1", res11.State);
             Assert.AreEqual(765, res11.Value);
@@ -343,8 +343,8 @@ namespace Morilib
         [TestMethod]
         public void StatePutTest()
         {
-            var m11 = MonadPrimus.State<string, int>.Put("s1");
-            var res11 = m11.RunState("s2");
+            var m11 = MonadPrimus.Put<string, int>("s1");
+            var res11 = m11("s2");
 
             Assert.AreEqual("s1", res11.State);
             Assert.AreEqual(default(int), res11.Value);
@@ -353,8 +353,8 @@ namespace Morilib
         [TestMethod]
         public void StateModifyTest()
         {
-            var m11 = MonadPrimus.State<string, int>.Modify(x => x + "1");
-            var res11 = m11.RunState("s1");
+            var m11 = MonadPrimus.Modify<string, int>(x => x + "1");
+            var res11 = m11("s1");
 
             Assert.AreEqual("s11", res11.State);
             Assert.AreEqual(default(int), res11.Value);
@@ -364,7 +364,7 @@ namespace Morilib
         public void StateRunStateTest()
         {
             var m11 = new MonadPrimus.State<string, int>(x => new MonadPrimus.StateTuple<int, string>(int.Parse(x) + 1, x.ToString() + "1"));
-            var res11 = m11.RunState("1");
+            var res11 = m11("1");
             var res12 = m11.EvalState("1");
             var res13 = m11.ExecState("1");
 
@@ -379,7 +379,7 @@ namespace Morilib
         {
             var m11 = new MonadPrimus.State<string, int>(x => new MonadPrimus.StateTuple<int, string>(int.Parse(x) + 1, x.ToString() + "1"));
             var m12 = m11.Select(x => x.ToString() + "2");
-            var res11 = m12.RunState("1");
+            var res11 = m12("1");
 
             Assert.AreEqual("22", res11.Value);
             Assert.AreEqual("11", res11.State);
@@ -390,7 +390,7 @@ namespace Morilib
         {
             var m11 = new MonadPrimus.State<string, int>(x => new MonadPrimus.StateTuple<int, string>(int.Parse(x) + 1, x.ToString() + "1"));
             var m12 = m11.SelectMany(x => new MonadPrimus.State<string, string>(s => new MonadPrimus.StateTuple<string, string>(x + s, s + x)));
-            var res11 = m12.RunState("1");
+            var res11 = m12("1");
 
             Assert.AreEqual("211", res11.Value);
             Assert.AreEqual("112", res11.State);
@@ -402,7 +402,7 @@ namespace Morilib
             var m11 = from x in new MonadPrimus.State<string, int>(x => new MonadPrimus.StateTuple<int, string>(int.Parse(x) + 1, x.ToString() + "1"))
                       from y in new MonadPrimus.State<string, string>(s => new MonadPrimus.StateTuple<string, string>(x + s, s + x))
                       select x + y;
-            var res11 = m11.RunState("1");
+            var res11 = m11("1");
 
             Assert.AreEqual("2211", res11.Value);
             Assert.AreEqual("112", res11.State);
@@ -415,8 +415,8 @@ namespace Morilib
                 y => new MonadPrimus.State<string, int>(x => new MonadPrimus.StateTuple<int, string>(int.Parse(x) + y, x.ToString() + y));
             var m11 = 765.ToState<string, int>().SelectMany(f1);
             var m12 = f1(765);
-            var res11 = m11.RunState("1");
-            var res12 = m12.RunState("1");
+            var res11 = m11("1");
+            var res12 = m12("1");
 
             Assert.AreEqual(766, res11.Value);
             Assert.AreEqual("1765", res11.State);
@@ -430,8 +430,8 @@ namespace Morilib
             var m00 = new MonadPrimus.State<string, int>(x => new MonadPrimus.StateTuple<int, string>(int.Parse(x) + 1, x.ToString() + "1"));
             var m11 = m00.SelectMany(MonadPrimus.ToState<string, int>);
             var m12 = m00;
-            var res11 = m11.RunState("1");
-            var res12 = m12.RunState("1");
+            var res11 = m11("1");
+            var res12 = m12("1");
 
             Assert.AreEqual(2, res11.Value);
             Assert.AreEqual("11", res11.State);
@@ -448,8 +448,8 @@ namespace Morilib
                 x => new MonadPrimus.State<string, string>(s => new MonadPrimus.StateTuple<string, string>(x + s, s + x));
             var m11 = 765.ToState<string, int>().SelectMany(f1).SelectMany(g1);
             var m12 = 765.ToState<string, int>().SelectMany(x => f1(x).SelectMany(g1));
-            var res11 = m11.RunState("1");
-            var res12 = m12.RunState("1");
+            var res11 = m11("1");
+            var res12 = m12("1");
 
             Assert.AreEqual("7661765", res11.Value);
             Assert.AreEqual("1765766", res11.State);
@@ -461,20 +461,17 @@ namespace Morilib
         public void ReaderLocalTest()
         {
             var m11 = new MonadPrimus.Reader<string, int>(x => int.Parse(x) + 1);
-            var m12 = MonadPrimus.Reader<string, int>.Local(x => x + x, m11);
-            var m13 = MonadPrimus.Reader<string, int>.Local(x => x + x);
-            var res11 = m12.RunReader("1");
-            var res12 = m13(m11).RunReader("1");
+            var m12 = MonadPrimus.Local(x => x + x, m11);
+            var res11 = m12("1");
 
             Assert.AreEqual(12, res11);
-            Assert.AreEqual(12, res12);
         }
 
         [TestMethod]
         public void ReaderToReaderTest()
         {
             var m11 = 765.ToReader<string, int>();
-            var res11 = m11.RunReader("s1");
+            var res11 = m11("s1");
 
             Assert.AreEqual(res11, 765);
         }
@@ -484,7 +481,7 @@ namespace Morilib
         {
             var m11 = new MonadPrimus.Reader<string, int>(x => int.Parse(x) + 1);
             var m12 = m11.Select(x => x.ToString() + "2");
-            var res11 = m12.RunReader("1");
+            var res11 = m12("1");
 
             Assert.AreEqual("22", res11);
         }
@@ -494,7 +491,7 @@ namespace Morilib
         {
             var m11 = new MonadPrimus.Reader<string, int>(x => int.Parse(x) + 1);
             var m12 = m11.SelectMany(x => new MonadPrimus.Reader<string, string>(s => x + s));
-            var res11 = m12.RunReader("1");
+            var res11 = m12("1");
 
             Assert.AreEqual("21", res11);
         }
@@ -505,7 +502,7 @@ namespace Morilib
             var m11 = from x in new MonadPrimus.Reader<string, int>(x => int.Parse(x) + 1)
                       from y in new MonadPrimus.Reader<string, string>(s => x + s)
                       select x + y;
-            var res11 = m11.RunReader("1");
+            var res11 = m11("1");
 
             Assert.AreEqual("221", res11);
         }
@@ -516,8 +513,8 @@ namespace Morilib
             Func<int, MonadPrimus.Reader<string, int>> f1 = y => new MonadPrimus.Reader<string, int>(x => int.Parse(x) + y);
             var m11 = 765.ToReader<string, int>().SelectMany(f1);
             var m12 = f1(765);
-            var res11 = m11.RunReader("1");
-            var res12 = m12.RunReader("1");
+            var res11 = m11("1");
+            var res12 = m12("1");
 
             Assert.AreEqual(766, res11);
             Assert.AreEqual(766, res12);
@@ -529,8 +526,8 @@ namespace Morilib
             var m00 = new MonadPrimus.Reader<string, int>(x => int.Parse(x) + 1);
             var m11 = m00.SelectMany(MonadPrimus.ToReader<string, int>);
             var m12 = m00;
-            var res11 = m11.RunReader("1");
-            var res12 = m12.RunReader("1");
+            var res11 = m11("1");
+            var res12 = m12("1");
 
             Assert.AreEqual(2, res11);
             Assert.AreEqual(2, res12);
@@ -543,8 +540,8 @@ namespace Morilib
             Func<int, MonadPrimus.Reader<string, string>> g1 = x => new MonadPrimus.Reader<string, string>(s => x + s);
             var m11 = 765.ToReader<string, int>().SelectMany(f1).SelectMany(g1);
             var m12 = 765.ToReader<string, int>().SelectMany(x => f1(x).SelectMany(g1));
-            var res11 = m11.RunReader("1");
-            var res12 = m12.RunReader("1");
+            var res11 = m11("1");
+            var res12 = m12("1");
 
             Assert.AreEqual("7661", res11);
             Assert.AreEqual("7661", res12);
@@ -553,9 +550,9 @@ namespace Morilib
         [TestMethod]
         public void WriterSelectTest()
         {
-            var m11 = new MonadPrimus.Writer<string, int>(1, new string[] { "init1", "init2" });
+            var m11 = MonadPrimus.Create(1, new string[] { "init1", "init2" });
             var m12 = m11.Select(x => x.ToString() + "2");
-            var res11 = m12.RunWriter();
+            var res11 = m12();
 
             Assert.AreEqual("12", res11.Value);
             Assert.AreEqual("init1", res11.State.ElementAt(0));
@@ -566,9 +563,9 @@ namespace Morilib
         [TestMethod]
         public void WriterSelectManyTest01()
         {
-            var m11 = new MonadPrimus.Writer<string, int>(1, new string[] { "init1", "init2" });
-            var m12 = m11.SelectMany(x => new MonadPrimus.Writer<string, string>(x + "1", new string[] { "next" }));
-            var res11 = m12.RunWriter();
+            var m11 = MonadPrimus.Create(1, new string[] { "init1", "init2" });
+            var m12 = m11.SelectMany(x => MonadPrimus.Create(x + "1", new string[] { "next" }));
+            var res11 = m12();
 
             Assert.AreEqual("11", res11.Value);
             Assert.AreEqual("init1", res11.State.ElementAt(0));
@@ -580,10 +577,10 @@ namespace Morilib
         [TestMethod]
         public void WriterSelectManyTest02()
         {
-            var m11 = from x in new MonadPrimus.Writer<string, int>(1, new string[] { "init1", "init2" })
-                      from y in new MonadPrimus.Writer<string, string>(x + "1", new string[] { "next" })
+            var m11 = from x in MonadPrimus.Create(1, new string[] { "init1", "init2" })
+                      from y in MonadPrimus.Create(x + "1", new string[] { "next" })
                       select x + y;
-            var res11 = m11.RunWriter();
+            var res11 = m11();
 
             Assert.AreEqual("111", res11.Value);
             Assert.AreEqual("init1", res11.State.ElementAt(0));
@@ -595,11 +592,11 @@ namespace Morilib
         [TestMethod]
         public void WriterMonadRule1Test()
         {
-            Func<int, MonadPrimus.Writer<string, int>> f1 = y => new MonadPrimus.Writer<string, int>(y, new string[] { y.ToString(), "init2" });
+            Func<int, MonadPrimus.Writer<string, int>> f1 = y => MonadPrimus.Create(y, new string[] { y.ToString(), "init2" });
             var m11 = 765.ToWriter<string, int>().SelectMany(f1);
             var m12 = f1(765);
-            var res11 = m11.RunWriter();
-            var res12 = m12.RunWriter();
+            var res11 = m11();
+            var res12 = m12();
 
             Assert.AreEqual(765, res11.Value);
             Assert.AreEqual("765", res11.State.ElementAt(0));
@@ -614,11 +611,11 @@ namespace Morilib
         [TestMethod]
         public void WriterMonadRule2Test()
         {
-            var m00 = new MonadPrimus.Writer<string, int>(1, new string[] { "init1", "init2" });
+            var m00 = MonadPrimus.Create(1, new string[] { "init1", "init2" });
             var m11 = m00.SelectMany(MonadPrimus.ToWriter<string, int>);
             var m12 = m00;
-            var res11 = m11.RunWriter();
-            var res12 = m12.RunWriter();
+            var res11 = m11();
+            var res12 = m12();
 
             Assert.AreEqual(1, res11.Value);
             Assert.AreEqual("init1", res11.State.ElementAt(0));
@@ -633,12 +630,12 @@ namespace Morilib
         [TestMethod]
         public void WriterMonadRule3Test()
         {
-            Func<int, MonadPrimus.Writer<string, int>> f1 = y => new MonadPrimus.Writer<string, int>(y, new string[] { y.ToString(), "init2" });
-            Func<int, MonadPrimus.Writer<string, string>> g1 = x => new MonadPrimus.Writer<string, string>(x + "1", new string[] { x.ToString() });
+            Func<int, MonadPrimus.Writer<string, int>> f1 = y => MonadPrimus.Create(y, new string[] { y.ToString(), "init2" });
+            Func<int, MonadPrimus.Writer<string, string>> g1 = x => MonadPrimus.Create(x + "1", new string[] { x.ToString() });
             var m11 = 765.ToWriter<string, int>().SelectMany(f1).SelectMany(g1);
             var m12 = 765.ToWriter<string, int>().SelectMany(x => f1(x).SelectMany(g1));
-            var res11 = m11.RunWriter();
-            var res12 = m12.RunWriter();
+            var res11 = m11();
+            var res12 = m12();
 
             Assert.AreEqual("7651", res11.Value);
             Assert.AreEqual("765", res11.State.ElementAt(0));
@@ -655,9 +652,9 @@ namespace Morilib
         [TestMethod]
         public void WriterStringSelectTest()
         {
-            var m11 = new MonadPrimus.Writer<int>(1, "init1");
+            var m11 = MonadPrimus.Create(1, "init1");
             var m12 = m11.Select(x => x.ToString() + "2");
-            var res11 = m12.RunWriter();
+            var res11 = m12();
 
             Assert.AreEqual("12", res11.Value);
             Assert.AreEqual("init1", res11.State);
@@ -666,9 +663,9 @@ namespace Morilib
         [TestMethod]
         public void WriterStringSelectManyTest01()
         {
-            var m11 = new MonadPrimus.Writer<int>(1, "init1");
-            var m12 = m11.SelectMany(x => new MonadPrimus.Writer<string>(x + "1", "next"));
-            var res11 = m12.RunWriter();
+            var m11 = MonadPrimus.Create(1, "init1");
+            var m12 = m11.SelectMany(x => MonadPrimus.Create(x + "1", "next"));
+            var res11 = m12();
 
             Assert.AreEqual("11", res11.Value);
             Assert.AreEqual("init1next", res11.State);
@@ -677,10 +674,10 @@ namespace Morilib
         [TestMethod]
         public void WriterStringSelectManyTest02()
         {
-            var m11 = from x in new MonadPrimus.Writer<int>(1, "init1")
-                      from y in new MonadPrimus.Writer<string>(x + "1", "next")
+            var m11 = from x in MonadPrimus.Create(1, "init1")
+                      from y in MonadPrimus.Create(x + "1", "next")
                       select x + y;
-            var res11 = m11.RunWriter();
+            var res11 = m11();
 
             Assert.AreEqual("111", res11.Value);
             Assert.AreEqual("init1next", res11.State);
@@ -689,11 +686,11 @@ namespace Morilib
         [TestMethod]
         public void WriterStringMonadRule1Test()
         {
-            Func<int, MonadPrimus.Writer<int>> f1 = y => new MonadPrimus.Writer<int>(y, y.ToString());
-            var m11 = 765.ToWriter<int>().SelectMany(f1);
+            Func<int, MonadPrimus.Writer<int>> f1 = y => MonadPrimus.Create(y, y.ToString());
+            var m11 = 765.ToWriter().SelectMany(f1);
             var m12 = f1(765);
-            var res11 = m11.RunWriter();
-            var res12 = m12.RunWriter();
+            var res11 = m11();
+            var res12 = m12();
 
             Assert.AreEqual(765, res11.Value);
             Assert.AreEqual("765", res11.State);
@@ -704,11 +701,11 @@ namespace Morilib
         [TestMethod]
         public void WriterStringMonadRule2Test()
         {
-            var m00 = new MonadPrimus.Writer<int>(1, "init1");
-            var m11 = m00.SelectMany(MonadPrimus.ToWriter<int>);
+            var m00 = MonadPrimus.Create(1, "init1");
+            var m11 = m00.SelectMany(MonadPrimus.ToWriter);
             var m12 = m00;
-            var res11 = m11.RunWriter();
-            var res12 = m12.RunWriter();
+            var res11 = m11();
+            var res12 = m12();
 
             Assert.AreEqual(1, res11.Value);
             Assert.AreEqual("init1", res11.State);
@@ -719,12 +716,12 @@ namespace Morilib
         [TestMethod]
         public void WriterStringMonadRule3Test()
         {
-            Func<int, MonadPrimus.Writer<int>> f1 = y => new MonadPrimus.Writer<int>(y, y.ToString());
-            Func<int, MonadPrimus.Writer<string>> g1 = x => new MonadPrimus.Writer<string>(x + "1", x.ToString());
-            var m11 = 765.ToWriter<int>().SelectMany(f1).SelectMany(g1);
-            var m12 = 765.ToWriter<int>().SelectMany(x => f1(x).SelectMany(g1));
-            var res11 = m11.RunWriter();
-            var res12 = m12.RunWriter();
+            Func<int, MonadPrimus.Writer<int>> f1 = y => MonadPrimus.Create(y, y.ToString());
+            Func<int, MonadPrimus.Writer<string>> g1 = x => MonadPrimus.Create(x + "1", x.ToString());
+            var m11 = 765.ToWriter().SelectMany(f1).SelectMany(g1);
+            var m12 = 765.ToWriter().SelectMany(x => f1(x).SelectMany(g1));
+            var res11 = m11();
+            var res12 = m12();
 
             Assert.AreEqual("7651", res11.Value);
             Assert.AreEqual("765765", res11.State);

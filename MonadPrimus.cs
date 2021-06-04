@@ -429,77 +429,51 @@ namespace Morilib
         }
 
         /// <summary>
-        /// A class of state monad.
+        /// A delegate of state monad.
         /// </summary>
         /// <typeparam name="S">type of state</typeparam>
         /// <typeparam name="A">type of value</typeparam>
-        public class State<S, A>
+        public delegate StateTuple<A, S> State<S, A>(S s);
+
+        /// <summary>
+        /// gets the state as value from this monad.
+        /// </summary>
+        public static State<S, S> Get<S>() => s => new StateTuple<S, S>(s, s);
+
+        /// <summary>
+        /// puts the state to this monad.
+        /// </summary>
+        /// <param name="x">state to put</param>
+        /// <returns>new monad</returns>
+        public static State<S, A> Put<S, A>(S x) => z => new StateTuple<A, S>(default(A), x);
+
+        /// <summary>
+        /// modifies the state by the given function.
+        /// </summary>
+        /// <param name="f">modify function</param>
+        /// <returns>new monad</returns>
+        public static State<S, A> Modify<S, A>(Func<S, S> f) => z => new StateTuple<A, S>(default(A), f(z));
+
+        /// <summary>
+        /// runs this monad by the given initial state and gets the result value.
+        /// </summary>
+        /// <param name="s">monad</param>
+        /// <param name="init">initial state</param>
+        /// <returns>result value</returns>
+        public static A EvalState<S, A>(this State<S, A> s, S init)
         {
-            private Func<S, StateTuple<A, S>> Func { get; set; }
+            return s(init).Value;
+        }
 
-            /// <summary>
-            /// gets the state as value from this monad.
-            /// </summary>
-            public static readonly State<S, S> Get = new State<S, S>(s => new StateTuple<S, S>(s, s));
-
-            /// <summary>
-            /// puts the state to this monad.
-            /// </summary>
-            /// <param name="x">state to put</param>
-            /// <returns>new monad</returns>
-            public static State<S, A> Put(S x)
-            {
-                return new State<S, A>(z => new StateTuple<A, S>(default(A), x));
-            }
-
-            /// <summary>
-            /// modifies the state by the given function.
-            /// </summary>
-            /// <param name="f">modify function</param>
-            /// <returns>new monad</returns>
-            public static State<S, A> Modify(Func<S, S> f)
-            {
-                return new State<S, A>(z => new StateTuple<A, S>(default(A), f(z)));
-            }
-
-            /// <summary>
-            /// constructs a state monad.
-            /// </summary>
-            /// <param name="func">state function to wrap</param>
-            public State(Func<S, StateTuple<A, S>> func)
-            {
-                this.Func = func;
-            }
-
-            /// <summary>
-            /// runs this monad by the given initial state.
-            /// </summary>
-            /// <param name="s">initial state</param>
-            /// <returns>result tuple</returns>
-            public StateTuple<A, S> RunState(S s)
-            {
-                return Func(s);
-            }
-
-            /// <summary>
-            /// runs this monad by the given initial state and gets the result value.
-            /// </summary>
-            /// <param name="s">initial state</param>
-            /// <returns>result value</returns>
-            public A EvalState(S s)
-            {
-                return RunState(s).Value;
-            }
-
-            /// <summary>
-            /// runs this monad by the given initial state and gets the result state
-            /// </summary>
-            /// <param name="s">initial state</param>
-            /// <returns>result state</returns>
-            public S ExecState(S s)
-            {
-                return RunState(s).State;
-            }
+        /// <summary>
+        /// runs this monad by the given initial state and gets the result state
+        /// </summary>
+        /// <param name="s">monad</param>
+        /// <param name="init">initial state</param>
+        /// <returns>result state</returns>
+        public static S ExecState<S, A>(this State<S, A> s, S init)
+        {
+            return s(init).State;
         }
 
         /// <summary>
@@ -511,7 +485,7 @@ namespace Morilib
         /// <returns>unit state monad</returns>
         public static State<S, A> ToState<S, A>(this A value)
         {
-            return new State<S, A>(s => new StateTuple<A, S>(value, s));
+            return s => new StateTuple<A, S>(value, s);
         }
 
         /// <summary>
@@ -527,7 +501,7 @@ namespace Morilib
         {
             return new State<S, B>(s =>
             {
-                var s0 = m.RunState(s);
+                var s0 = m(s);
                 return new StateTuple<B, S>(k(s0.Value), s0.State);
             });
         }
@@ -545,8 +519,8 @@ namespace Morilib
         {
             return new State<S, B>(s0 =>
             {
-                var s1 = a.RunState(s0);
-                var s2 = k(a.RunState(s0).Value).RunState(s1.State);
+                var s1 = a(s0);
+                var s2 = k(a(s0).Value)(s1.State);
                 return s2;
             });
         }
@@ -569,64 +543,24 @@ namespace Morilib
         }
 
         /// <summary>
-        /// A class of reader monad.
+        /// A delegate of reader monad.
         /// </summary>
         /// <typeparam name="S">type of state</typeparam>
         /// <typeparam name="A">type of value</typeparam>
-        public class Reader<S, A>
-        {
-            private Func<S, A> Func { get; set; }
+        public delegate A Reader<S, A>(S s);
 
-            /// <summary>
-            /// gets the state of this monad.
-            /// </summary>
-            public static readonly Reader<S, S> Ask = new Reader<S, S>(s => s);
+        /// <summary>
+        /// gets the state of this monad.
+        /// </summary>
+        public static Reader<S, S> Ask<S>() => s => s;
 
-            /// <summary>
-            /// creates the local context of the reader monad.
-            /// </summary>
-            /// <param name="f">local state modify function</param>
-            /// <param name="reader">reader monad</param>
-            /// <returns>new reader monad</returns>
-            public static Reader<S, A> Local(Func<S, S> f, Reader<S, A> reader)
-            {
-                return new Reader<S, A>(s => reader.RunReader(f(s)));
-            }
-
-            /// <summary>
-            /// creates the local context of the reader monad.
-            /// result is curried.
-            /// </summary>
-            /// <param name="f">local state modify function</param>
-            /// <param name="reader">reader monad</param>
-            /// <returns>curried function</returns>
-            public static Func<Reader<S, A>, Reader<S, A>> Local(Func<S, S> f)
-            {
-                Func<Reader<S, A>, Reader<S, A>> res;
-
-                res = r => new Reader<S, A>(s => r.RunReader(f(s)));
-                return res;
-            }
-
-            /// <summary>
-            /// constructs a reader monad.
-            /// </summary>
-            /// <param name="func">state function to wrap</param>
-            public Reader(Func<S, A> func)
-            {
-                this.Func = func;
-            }
-
-            /// <summary>
-            /// runs this monad by the given initial state.
-            /// </summary>
-            /// <param name="s">initial state</param>
-            /// <returns>result value</returns>
-            public A RunReader(S s)
-            {
-                return Func(s);
-            }
-        }
+        /// <summary>
+        /// creates the local context of the reader monad.
+        /// </summary>
+        /// <param name="f">local state modify function</param>
+        /// <param name="reader">reader monad</param>
+        /// <returns>new reader monad</returns>
+        public static Reader<S, A> Local<S, A>(Func<S, S> f, Reader<S, A> reader) => s => reader(f(s));
 
         /// <summary>
         /// An unit function of reader monad.
@@ -651,7 +585,7 @@ namespace Morilib
         /// <returns>mapped monad</returns>
         public static Reader<S, B> Select<S, A, B>(this Reader<S, A> m, Func<A, B> k)
         {
-            return new Reader<S, B>(s => k(m.RunReader(s)));
+            return new Reader<S, B>(s => k(m(s)));
         }
 
         /// <summary>
@@ -665,7 +599,7 @@ namespace Morilib
         /// <returns>bound monad</returns>
         public static Reader<S, B> SelectMany<S, A, B>(this Reader<S, A> a, Func<A, Reader<S, B>> b)
         {
-            return new Reader<S, B>(r => b(a.RunReader(r)).RunReader(r));
+            return new Reader<S, B>(r => b(a(r))(r));
         }
 
         /// <summary>
@@ -724,55 +658,25 @@ namespace Morilib
         }
 
         /// <summary>
-        /// A class of writer monad.
+        /// A delegate of writer monad.
         /// </summary>
         /// <typeparam name="W">type of message</typeparam>
         /// <typeparam name="A">type of value</typeparam>
-        public class Writer<W, A>
-        {
-            private IEnumerable<W> State { get; set; }
-            private A Value { get; set; }
+        public delegate WriterTuple<A, W> Writer<W, A>();
 
-            /// <summary>
-            /// appends the given message to this monad.
-            /// </summary>
-            /// <param name="w">message</param>
-            /// <returns>new monad</returns>
-            public static Writer<W, A> Tell(W w)
-            {
-                return new Writer<W, A>(default(A), new W[] { w });
-            }
+        /// <summary>
+        /// creates a writer monad from the value and messages.
+        /// </summary>
+        /// <param name="value">value</param>
+        /// <param name="state">messages</param>
+        public static Writer<W, A> Create<W, A>(A value, IEnumerable<W> state) => () => new WriterTuple<A, W>(value, state);
 
-            /// <summary>
-            /// appends the given messages to this monad.
-            /// </summary>
-            /// <param name="w">messages</param>
-            /// <returns>new monad</returns>
-            public static Writer<W, A> Tell(IEnumerable<W> w)
-            {
-                return new Writer<W, A>(default(A), w);
-            }
-
-            /// <summary>
-            /// constructs a writer monad from the value and messages.
-            /// </summary>
-            /// <param name="value">value</param>
-            /// <param name="state">messages</param>
-            public Writer(A value, IEnumerable<W> state)
-            {
-                this.State = state;
-                this.Value = value;
-            }
-
-            /// <summary>
-            /// runs this monad.
-            /// </summary>
-            /// <returns>writer tuple of result</returns>
-            public WriterTuple<A, W> RunWriter()
-            {
-                return new WriterTuple<A, W>(Value, State);
-            }
-        }
+        /// <summary>
+        /// appends the given message to this monad.
+        /// </summary>
+        /// <param name="w">message</param>
+        /// <returns>new monad</returns>
+        public static Writer<W, A> Tell<W, A>(W w) => Create(default(A), new W[] { w });
 
         /// <summary>
         /// An unit function of writer monad.
@@ -783,7 +687,7 @@ namespace Morilib
         /// <returns>unit writer monad</returns>
         public static Writer<W, A> ToWriter<W, A>(this A value)
         {
-            return new Writer<W, A>(value, new W[] { });
+            return Create(value, new W[] { });
         }
 
         /// <summary>
@@ -797,10 +701,10 @@ namespace Morilib
         /// <returns>mapped monad</returns>
         public static Writer<W, B> Select<W, A, B>(this Writer<W, A> m, Func<A, B> k)
         {
-            var s0 = m.RunWriter();
+            var s0 = m();
             var s1 = k(s0.Value);
 
-            return new Writer<W, B>(s1, s0.State);
+            return Create(s1, s0.State);
         }
 
         /// <summary>
@@ -814,9 +718,9 @@ namespace Morilib
         /// <returns>bound monad</returns>
         public static Writer<W, B> SelectMany<W, A, B>(this Writer<W, A> a, Func<A, Writer<W, B>> k)
         {
-            var s1 = a.RunWriter();
-            var s2 = k(s1.Value).RunWriter();
-            return new Writer<W, B>(s2.Value, s1.State.Concat(s2.State));
+            var s1 = a();
+            var s2 = k(s1.Value)();
+            return Create(s2.Value, s1.State.Concat(s2.State));
         }
 
         /// <summary>
@@ -875,45 +779,27 @@ namespace Morilib
         }
 
         /// <summary>
-        /// A class of writer monad.
+        /// A delegate of writer monad.
         /// Type of state is fixed to string.
         /// </summary>
         /// <typeparam name="A">type of value</typeparam>
-        public class Writer<A>
-        {
-            private string State { get; set; }
-            private A Value { get; set; }
+        public delegate WriterTuple<A> Writer<A>();
 
-            /// <summary>
-            /// appends the given message to this monad.
-            /// </summary>
-            /// <param name="w">message</param>
-            /// <returns>new monad</returns>
-            public static Writer<A> Tell(string w)
-            {
-                return new Writer<A>(default(A), w);
-            }
+        /// <summary>
+        /// creates a writer monad from the value and message.
+        /// Type of state is fixed to string.
+        /// </summary>
+        /// <param name="value">value</param>
+        /// <param name="state">message</param>
+        public static Writer<A> Create<A>(A value, string state) => () => new WriterTuple<A>(value, state);
 
-            /// <summary>
-            /// constructs a writer monad from the value and message.
-            /// </summary>
-            /// <param name="value">value</param>
-            /// <param name="state">message</param>
-            public Writer(A value, string state)
-            {
-                this.State = state;
-                this.Value = value;
-            }
-
-            /// <summary>
-            /// runs this monad.
-            /// </summary>
-            /// <returns>writer tuple of result</returns>
-            public WriterTuple<A> RunWriter()
-            {
-                return new WriterTuple<A>(Value, State);
-            }
-        }
+        /// <summary>
+        /// appends the given message to this monad.
+        /// Type of state is fixed to string.
+        /// </summary>
+        /// <param name="w">message</param>
+        /// <returns>new monad</returns>
+        public static Writer<A> Tell<A>(string w) => Create(default(A), w);
 
         /// <summary>
         /// An unit function of writer monad.
@@ -923,7 +809,7 @@ namespace Morilib
         /// <returns>unit writer monad</returns>
         public static Writer<A> ToWriter<A>(this A value)
         {
-            return new Writer<A>(value, "");
+            return Create(value, "");
         }
 
         /// <summary>
@@ -936,10 +822,10 @@ namespace Morilib
         /// <returns>mapped monad</returns>
         public static Writer<B> Select<A, B>(this Writer<A> m, Func<A, B> k)
         {
-            var s0 = m.RunWriter();
+            var s0 = m();
             var s1 = k(s0.Value);
 
-            return new Writer<B>(s1, s0.State);
+            return Create(s1, s0.State);
         }
 
         /// <summary>
@@ -952,9 +838,9 @@ namespace Morilib
         /// <returns>bound monad</returns>
         public static Writer<B> SelectMany<A, B>(this Writer<A> a, Func<A, Writer<B>> k)
         {
-            var s1 = a.RunWriter();
-            var s2 = k(s1.Value).RunWriter();
-            return new Writer<B>(s2.Value, s1.State + s2.State);
+            var s1 = a();
+            var s2 = k(s1.Value)();
+            return Create(s2.Value, s1.State + s2.State);
         }
 
         /// <summary>
