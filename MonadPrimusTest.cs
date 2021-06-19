@@ -19,6 +19,29 @@ namespace Morilib
         }
 
         [TestMethod]
+        public void IdentityToEnumerableTest()
+        {
+            Assert.IsTrue(27.ToIdentity().ToEnumerable().SequenceEqual(new int[] { 27 }));
+        }
+
+        [TestMethod]
+        public void IdentityEqualsMonadTest()
+        {
+            var test1 = "27".ToIdentity();
+            var test2 = "27".ToIdentity();
+            var test3 = "961".ToIdentity();
+            var test4 = ((string)null).ToIdentity();
+
+            Assert.IsTrue(test1.MonadEqual(test1));
+            Assert.IsTrue(test1.MonadEqual(test2));
+            Assert.IsTrue(test2.MonadEqual(test1));
+            Assert.IsTrue(test4.MonadEqual(test4));
+            Assert.IsFalse(test1.MonadEqual(test3));
+            Assert.IsFalse(test1.MonadEqual(test4));
+            Assert.IsFalse(test4.MonadEqual(test1));
+        }
+
+        [TestMethod]
         public void IdentitySelectTest()
         {
             var test = 876.ToIdentity();
@@ -86,6 +109,34 @@ namespace Morilib
             Assert.IsTrue(res1.HasValue);
             Assert.AreEqual(27, res1.Value);
             Assert.IsFalse(res2.HasValue);
+        }
+
+        [TestMethod]
+        public void MaybeToEnumerableTest()
+        {
+            Assert.IsTrue(27.ToMaybe().ToEnumerable().SequenceEqual(new int[] { 27 }));
+            Assert.IsTrue(MonadPrimus.Maybe<int>.Nothing.ToEnumerable().SequenceEqual(new int[0]));
+        }
+
+        [TestMethod]
+        public void MaybeMonadEqualTest()
+        {
+            var test1 = "27".ToMaybe();
+            var test2 = "27".ToMaybe();
+            var test3 = "961".ToMaybe();
+            var test4 = MonadPrimus.Maybe<string>.Nothing;
+            var test5 = ((string)null).ToMaybe();
+
+            Assert.IsTrue(test1.MonadEqual(test1));
+            Assert.IsTrue(test1.MonadEqual(test2));
+            Assert.IsTrue(test2.MonadEqual(test1));
+            Assert.IsTrue(test4.MonadEqual(test4));
+            Assert.IsTrue(test5.MonadEqual(test5));
+            Assert.IsFalse(test1.MonadEqual(test3));
+            Assert.IsFalse(test1.MonadEqual(test4));
+            Assert.IsFalse(test4.MonadEqual(test1));
+            Assert.IsFalse(test1.MonadEqual(test5));
+            Assert.IsFalse(test5.MonadEqual(test1));
         }
 
         [TestMethod]
@@ -208,6 +259,38 @@ namespace Morilib
             Assert.AreEqual(765, res1.Right);
             Assert.IsFalse(res2.IsRight);
             Assert.AreEqual("961pro", res2.Left);
+        }
+
+        [TestMethod]
+        public void EitherMonadEqualTest()
+        {
+            var test1 = "27".ToEither<string, string>();
+            var test2 = "27".ToEither<string, string>();
+            var test3 = "961".ToEither<string, string>();
+            var test4 = MonadPrimus.Either<string, string>.ToLeft("27");
+            var test5 = MonadPrimus.Either<string, string>.ToLeft("27");
+            var test6 = ((string)null).ToEither<string, string>();
+            var test7 = MonadPrimus.Either<string, string>.ToLeft(null);
+
+            Assert.IsTrue(test1.MonadEqual(test1));
+            Assert.IsTrue(test1.MonadEqual(test2));
+            Assert.IsTrue(test2.MonadEqual(test1));
+            Assert.IsTrue(test4.MonadEqual(test4));
+            Assert.IsTrue(test4.MonadEqual(test5));
+            Assert.IsTrue(test5.MonadEqual(test4));
+            Assert.IsTrue(test6.MonadEqual(test6));
+            Assert.IsTrue(test7.MonadEqual(test7));
+            Assert.IsFalse(test1.MonadEqual(test3));
+            Assert.IsFalse(test1.MonadEqual(test4));
+            Assert.IsFalse(test4.MonadEqual(test1));
+            Assert.IsFalse(test1.MonadEqual(test6));
+            Assert.IsFalse(test6.MonadEqual(test1));
+            Assert.IsFalse(test4.MonadEqual(test7));
+            Assert.IsFalse(test7.MonadEqual(test4));
+            Assert.IsFalse(test1.MonadEqual(test7));
+            Assert.IsFalse(test7.MonadEqual(test1));
+            Assert.IsFalse(test4.MonadEqual(test6));
+            Assert.IsFalse(test6.MonadEqual(test4));
         }
 
         [TestMethod]

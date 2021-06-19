@@ -51,6 +51,36 @@ namespace Morilib
         }
 
         /// <summary>
+        /// Transform the given identity monad to IEnumerable.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="monad">monad</param>
+        /// <returns>IEnumerable</returns>
+        public static IEnumerable<T> ToEnumerable<T>(this Identity<T> monad)
+        {
+            yield return monad.Value;
+        }
+
+        /// <summary>
+        /// return true if the given monad are equal.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="monad1">monad</param>
+        /// <param name="monad2">another monad</param>
+        /// <returns></returns>
+        public static bool MonadEqual<T>(this Identity<T> monad1, Identity<T> monad2)
+        {
+            if(monad1.Value != null && monad2.Value != null)
+            {
+                return monad1.Value.Equals(monad2.Value);
+            }
+            else
+            {
+                return monad1.Value == null && monad2.Value == null;
+            }
+        }
+
+        /// <summary>
         /// maps the identity monad with the given function
         /// </summary>
         /// <typeparam name="T">input type</typeparam>
@@ -164,6 +194,46 @@ namespace Morilib
         public static Maybe<T> Where<T>(this Maybe<T> m, Predicate<T> pred)
         {
             return !m.HasValue || pred(m.Value) ? m : Maybe<T>.Nothing;
+        }
+
+        /// <summary>
+        /// Transform the given maybe monad to IEnumerable.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="monad">monad</param>
+        /// <returns>IEnumerable</returns>
+        public static IEnumerable<T> ToEnumerable<T>(this Maybe<T> monad)
+        {
+            if(monad.HasValue)
+            {
+                yield return monad.Value;
+            }
+        }
+
+        /// <summary>
+        /// return true if the given monad are equal.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="monad1">monad</param>
+        /// <param name="monad2">another monad</param>
+        /// <returns></returns>
+        public static bool MonadEqual<T>(this Maybe<T> monad1, Maybe<T> monad2)
+        {
+            if(monad1.HasValue && monad2.HasValue)
+            {
+                if (monad1.Value != null && monad2.Value != null)
+                {
+                    return monad1.Value.Equals(monad2.Value);
+                }
+                else
+                {
+                    return monad1.Value == null && monad2.Value == null;
+                }
+            }
+            else
+            {
+                return !monad1.HasValue && !monad2.HasValue;
+            }
         }
 
         /// <summary>
@@ -320,6 +390,43 @@ namespace Morilib
         public static Either<L, R> ToEither<L, R>(this R value)
         {
             return Either<L, R>.ToRight(value);
+        }
+
+        /// <summary>
+        /// return true if the given monad are equal.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="monad1">monad</param>
+        /// <param name="monad2">another monad</param>
+        /// <returns></returns>
+        public static bool MonadEqual<L, R>(this Either<L, R> monad1, Either<L, R> monad2)
+        {
+            if (monad1.IsRight && monad2.IsRight)
+            {
+                if (monad1.Right != null && monad2.Right != null)
+                {
+                    return monad1.Right.Equals(monad2.Right);
+                }
+                else
+                {
+                    return monad1.Right == null && monad2.Right == null;
+                }
+            }
+            else if(!monad1.IsRight && !monad2.IsRight)
+            {
+                if (monad1.Left != null && monad2.Left != null)
+                {
+                    return monad1.Left.Equals(monad2.Left);
+                }
+                else
+                {
+                    return monad1.Left == null && monad2.Left == null;
+                }
+            }
+            else
+            {
+                return false;
+            }
         }
 
         /// <summary>
