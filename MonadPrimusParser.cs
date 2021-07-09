@@ -766,10 +766,45 @@ namespace Morilib
         /// <typeparam name="T">type</typeparam>
         /// <param name="parser">parser</param>
         /// <param name="f">environment changing function</param>
-        /// <returns></returns>
+        /// <returns>parser</returns>
         public static Parser<T> Local<T>(Parser<T> parser, Func<Env, Env> f)
         {
             return (env, position) => parser(f(env), position);
+        }
+
+        /// <summary>
+        /// gets current position as value.
+        /// </summary>
+        /// <returns>parser</returns>
+        public static Parser<int> GetPosition()
+        {
+            return (env, position) => new Result<int>(env, position, position);
+        }
+
+        /// <summary>
+        /// puts new position.
+        /// Previous position returned as value.
+        /// </summary>
+        /// <param name="newPosition">new position</param>
+        /// <returns>parser</returns>
+        public static Parser<int> PutPosition(int newPosition)
+        {
+            return (env, position) => new Result<int>(env, newPosition, position);
+        }
+
+        /// <summary>
+        /// changes input string.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="newInput">new input string</param>
+        /// <returns>parser</returns>
+        public static Parser<T> ChangeInput<T>(Parser<T> parser, string newInput)
+        {
+            return from pos1 in PutPosition(0)
+                   from result in Local(parser, x => new Env(newInput, x.Skip))
+                   from pos0 in PutPosition(pos1)
+                   select result;
         }
 
         /// <summary>

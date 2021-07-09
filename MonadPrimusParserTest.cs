@@ -359,5 +359,16 @@ namespace Morilib
             Match(expr1, "abc    d", " +", 0, 8, "c");
             NoMatch(expr1, "ab c    d", 0, "Does not match c");
         }
+
+        [TestMethod]
+        public void ChangeInputTest()
+        {
+            var expr1 = from x in Str("a")
+                        from y in ChangeInput(Str("A").Concat(Str("C")).Concat(Str("D")), "ACD")
+                        from z in Str("c")
+                        select y;
+
+            Match(expr1, "ac", 0, 2, "D");
+        }
     }
 }
