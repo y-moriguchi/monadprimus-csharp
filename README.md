@@ -197,7 +197,7 @@ To set a state to the State monad, Put method is available.
 var monad = from x in "765".ToState<int, string>()
             from y in MonadPrimus.Put<int, string>(876)
             select x;
-var result = monad(961);
+var result = monad(666);
 
 // result.Value = "765"
 // result.State = 876
@@ -378,21 +378,370 @@ To get current continuation from Continuation monad, CallCC method is available.
 var m11 = MonadPrimus.CallCC<int, int>(
     exit => from a in 1.ToCont<int, int>()
             from b in 7.ToCont<int, int>()
-            from c in a + b < 10 ? exit(961) : 6.ToCont<int, int>()
+            from c in a + b < 10 ? exit(666) : 6.ToCont<int, int>()
             from d in 5.ToCont<int, int>()
             select a + b + c + d);
 var m12 = MonadPrimus.CallCC<int, int>(
     exit => from a in 8.ToCont<int, int>()
             from b in 7.ToCont<int, int>()
-            from c in a + b < 10 ? exit(961) : 6.ToCont<int, int>()
+            from c in a + b < 10 ? exit(666) : 6.ToCont<int, int>()
             from d in 5.ToCont<int, int>()
             select a + b + c + d);
 
-// m11(x => x) = 961
+// m11(x => x) = 666
 // m12(x => x) = 26
 ```
 
 ## Parser
+
+### Parser delegate
+Parser delegate plays a role of MonadPrimus C# Parser.  
+Arguments of Parser delegate are environment (Env class) and position (int).  
+And Parser delegate return the result (Result class).
+
+```csharp
+public delegate Result<T> Parser<T>(Env env, int position);
+```
+
+Parser delegate has Run extension methods to pass input string and skip pattern.
+
+```csharp
+        // input string, position and Skip pattern by Parser
+        public static Result<T> Run<T>(this Parser<T> parser,
+            string toParse, int position, Parser<string> skip) { ... }
+
+        // input string, position and Skip pattern by Regex
+        public static Result<T> Run<T>(this Parser<T> parser,
+             string toParse, int position, string skip) { ... }
+
+        // input string and Skip pattern by Parser
+        // position specifies 0
+        public static Result<T> Run<T>(this Parser<T> parser,
+             string toParse, Parser<string> skip) { ... }
+
+        // input string and Skip pattern by Regex
+        // position specifies 0
+        public static Result<T> Run<T>(this Parser<T> parser,
+             string toParse, string skip) { ... }
+
+        // input string and position
+        // This parser does not skip
+        public static Result<T> Run<T>(this Parser<T> parser,
+             string toParse, int position) { ... }
+
+        // input string only
+        // position specifies 0
+        // This parser does not skip
+        public static Result<T> Run<T>(this Parser<T> parser,
+             string toParse) { ... }
+```
+
+### Env class
+Env class has infomation which does not change in parsing.  
+The information consists of input string to parser and Skip pattern (Parser delegate).
+
+```csharp
+        public class Env
+        {
+            public string ParseString { get; private set; }
+            public Parser<string> Skip { get; private set; }
+
+            public Env(string parseString, Parser<string> skip)
+            {
+                ParseString = parseString;
+                Skip = skip;
+            }
+
+            public Env(string parseString)
+            {
+                ParseString = parseString;
+                Skip = null;
+            }
+        }
+```
+
+### Result class
+Result class has three properties that are Env class, position, value and error message.
+
+```csharp
+        public class Result<T>
+        {
+            public Env Env { get; private set; }
+            public int Position { get; private set; }
+            public T Value { get; private set; }
+            public string ErrorMessage { get; private set; }
+
+            public bool IsError
+            {
+                get => ErrorMessage != null;
+            }
+
+            public Result(Env env, int position, T value)
+            {
+                Env = env;
+                Position = position;
+                Value = value;
+                ErrorMessage = null;
+            }
+
+            public Result(string errorMessage)
+            {
+                ErrorMessage = errorMessage;
+            }
+        }
+```
+
+### Str method
+Str method matches the given string and input string are matched,
+otherwise returns with error message.  
+Error message is optional.
+
+```csharp
+var res1 = MonadPrimus.Str("765");
+
+//res1.Run("765");   // Match
+//res1.Run("666");   // No Match
+```
+
+### IgnoreCase method
+IgnoreCase method matches the given string and input string are matched without case.
+
+```csharp
+var res1 = MonadPrimus.IgnoreCase("765pro");
+
+//res1.Run("765pro");   // Match
+//res1.Run("765PRO");   // Match
+```
+
+### Regex method
+Regex method matches the given regex matches the given string.
+
+```csharp
+var res1 = MonadPrimus.Regex("[1-8]+");
+
+//res1.Run("765");   // Match
+//res1.Run("666");   // No Match
+```
+
+### End method
+End method matches end of input string.
+
+```csharp
+var res1 = MonadPrimus.End();
+
+//res1.Run("");      // Match
+//res1.Run("666");   // No Match
+```
+
+### Real method
+Real method matches any float value and the value of parsing is the matched double value.
+
+```csharp
+var res1 = MonadPrimus.Real();
+
+//res1.Run("76.5");   // Match, value: 76.5
+//res1.Run("aaaa");   // No Match
+```
+
+### ToParser method
+ToParser method returns the given value itself.  
+ToParser method is monadic Unit function.
+
+```csharp
+var res1 = MonadPrimus.ToParser(765);
+
+//res1.Run("");   // Match, value: 765
+```
+
+### Select method
+Select method maps result value of the given Parser delegate.
+
+```csharp
+var res1 = MonadPrimus.Real().Select(x => x + 346);
+
+//res1.Run("765");   // Match, value: 1111.0
+```
+
+### SelectMany method
+SelectMany method binds the two Parser delegate.  
+SelectMany method is monadic Bind function.
+
+```csharp
+var res1 = MonadPrimus.Regex("[0-9][0-9]").SelectMany(x => MonadPrimus.Str(x));
+
+//res1.Run("2727");   // Match
+//res1.Run("2728");   // No Match
+```
+
+SelectMany method has an override which can use LINQ query syntax.
+
+```csharp
+var res1 = from a in MonadPrimus.Real()
+           from b in MonadPrimus.Real()
+           select a + b;
+
+//res1.Run("765  346", " +");   // Match, value: 1111.0
+```
+
+### SelectError method
+SelectError method maps the error message.
+
+```csharp
+var res1 = MonadPrimus.Str("765").SelectError(x => "Not 765");
+
+//res1.Run("666");   // No Match, error message: "Not 765"
+```
+
+### ChangeError method
+SelectError method changes the error message.
+
+```csharp
+var res1 = MonadPrimus.Str("765").ChangeError("Not 765");
+
+res1.Run("666");   // No Match, error message: "Not 765"
+```
+
+### Choice method
+Choice method returns the result of first argument if it is matched,
+otherwise returns the result of second argument.
+
+```csharp
+var res1 = MonadPrimus.Str("765").Choice(MonadPrimus.Str("346"));
+
+//res1.Run("765");   // Match
+//res1.Run("346");   // Match
+//res1.Run("666");   // No Match
+```
+
+### Option method
+Option method returns the result of argument if it is matched,
+otherwise return the second argument as a value.
+
+```csharp
+var res1 = MonadPrimus.Str("765").Option("000");
+
+//res1.Run("765");   // Match, value: 765
+//res1.Run("876");   // Match, value: 000
+```
+
+### Delimit method
+Delimit method aggregates the value of first argument by function given the third argument
+and the second argument as a delimiter.  
+This method aggregates left associative.
+
+```csharp
+var res1 = MonadPrimus.Real().Delimit(
+             MonadPrimus.Str("+"), (x, op, y) => x + y);
+
+//res1.Run("1+2+3");   // Match, value: 6
+```
+
+### DelimitRight method
+DelimitRight method is similar to Delimit method but it is right associative.
+
+### OneOrMore method
+OneOrMore method aggregates the value of first argument by function given the second argument.
+
+```csharp
+var res1 = MonadPrimus.Real().OneOrMore((x, y) => x + y);
+
+//res1.Run("1 2 3", " +");   // Match, value: 6
+```
+
+### ZeroOrMore method
+ZeroOrMore method aggregates the value of first argument by function given the second argument.  
+If input string does not match first argument then returns the value of third argument.  
+The third argument is optional, then the third value is default(T).
+
+```csharp
+var res1 = MonadPrimus.Real().ZeroOrMore((x, y) => x + y, -1);
+
+//res1.Run("1 2 3", " +");   // Match, value: 6
+//res1.Run("", " +");        // Match, value: -1
+```
+
+### Lookahead method
+Lookahead method matches if pattern of the argument is matched but position does not advance.
+
+```csharp
+var res1 = MonadPrimus.Str("876").LookAhead()
+            .SelectMany(x => MonadPrimus.Real());
+
+//res1.Run("876.5");   // Match
+//res1.Run("666");     // No Match
+```
+
+### Not method
+Not method matches pattern if pattern of the argument is not matched.
+
+```csharp
+var res1 = MonadPrimus.Str("666").Not()
+            .SelectMany(x => MonadPrimus.Real());
+
+//res1.Run("876.5");   // Match
+//res1.Run("666");     // No Match
+```
+
+### Concat method
+Concat method concatenates two Parser delegate.  
+The result of value is the value of second argument.
+
+```csharp
+var res1 = MonadPrimus.Str("76").Concat(MonadPrimus.Str("5"));
+
+//res1.Run("765");   // Match
+```
+
+### ConcatLeft method
+Concat method concatenates two Parser delegate.  
+The result of value is the value of first argument.
+
+### Local method
+Local method changes the environment temporarily.
+
+### GetPosition method
+GetPosition method returns the current position as a value.
+
+### PutPosition method
+PutPosition method changes the position to the given position and result the current position
+as a value.
+
+### ChangeInput method
+ChangeInput method changes the input string temporarily.  
+ChangeInput is available to including the file.  
+The implementation of ChangeInput shows as follows.
+
+```csharp
+        public static Parser<T> ChangeInput<T>(Parser<T> parser, string newInput)
+        {
+                   // set position to 0 and get current position as a value
+            return from pos1 in PutPosition(0)
+                   // change input string temporarily
+                   from result in Local(parser, x => new Env(newInput, x.Skip))
+                   // restore position to saved position
+                   from pos0 in PutPosition(pos1)
+                   select result;
+        }
+```
+
+### Letrec method
+Letrec method can recurse in the method.  
+Arguments of Letrec method is a function whose arguments are Parser delegale and
+returns a Parser delegate.
+
+```csharp
+var expr1 = Letrec<string, string>((x, y) => from a in Str("(")
+                                             from b in y.Choice(Str(""))
+                                             from c in Str(")")
+                                             select a + b + c,
+                                   (x, y) => from a in Str("[")
+                                             from b in x
+                                             from c in Str("]")
+                                             select a + b + c);
+
+//expr1("([([()])])");   // Match
+//expr1("([([()])]");    // Not Match
+```
 
 ### Tiny calculator
 
