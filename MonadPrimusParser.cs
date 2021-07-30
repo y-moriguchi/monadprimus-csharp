@@ -227,6 +227,64 @@ namespace Morilib
             }
         }
 
+        private static Parser<string> Str(string aString, string errorMessage, Func<string, string> f)
+        {
+            return (env, position) =>
+            {
+                var pos2 = Skip(env.ParseString, position, env.Skip);
+                var toParse = env.ParseString;
+
+                if (toParse.Length >= pos2 + aString.Length && f(toParse.Substring(pos2, aString.Length)) == aString)
+                {
+                    return new Result<string>(env, pos2 + aString.Length, toParse.Substring(pos2, aString.Length));
+                }
+                else
+                {
+                    return new Result<string>(errorMessage);
+                }
+            };
+        }
+
+        private static Parser<string> Key(string keyword, string errorMessage, Func<string, string> f)
+        {
+            CheckNull(keyword, nameof(keyword));
+            return (env, position) =>
+            {
+                var pos2 = Skip(env.ParseString, position, env.Skip);
+                var toParse = env.ParseString;
+
+                if (toParse.Length >= pos2 + keyword.Length && f(toParse.Substring(pos2, keyword.Length)) == keyword)
+                {
+                    var resultString = toParse.Substring(pos2, keyword.Length);
+                    if (env.Skip == null)
+                    {
+                        return new Result<string>(env, pos2 + keyword.Length, resultString);
+                    }
+                    else if (toParse.Length == pos2 + keyword.Length)
+                    {
+                        return new Result<string>(env, pos2 + keyword.Length, resultString);
+                    }
+                    else
+                    {
+                        var result = env.Skip.Run(toParse, pos2 + keyword.Length);
+
+                        if (result.IsError)
+                        {
+                            return new Result<string>(errorMessage);
+                        }
+                        else
+                        {
+                            return new Result<string>(env, pos2 + keyword.Length, resultString);
+                        }
+                    }
+                }
+                else
+                {
+                    return new Result<string>(errorMessage);
+                }
+            };
+        }
+
         /// <summary>
         /// creates a parser of matching the string.
         /// </summary>
@@ -236,20 +294,7 @@ namespace Morilib
         public static Parser<string> Str(string aString, string errorMessage)
         {
             CheckNull(aString, nameof(aString));
-            return (env, position) =>
-            {
-                var pos2 = Skip(env.ParseString, position, env.Skip);
-                var toParse = env.ParseString;
-
-                if (toParse.Length >= pos2 + aString.Length && toParse.Substring(pos2, aString.Length) == aString)
-                {
-                    return new Result<string>(env, pos2 + aString.Length, aString);
-                }
-                else
-                {
-                    return new Result<string>(errorMessage);
-                }
-            };
+            return Str(aString, errorMessage, x => x);
         }
 
         /// <summary>
@@ -263,6 +308,28 @@ namespace Morilib
         }
 
         /// <summary>
+        /// creates a parser of matching the keyword.
+        /// </summary>
+        /// <param name="aString">expected keyword</param>
+        /// <param name="errorMessage">error message if this does not match</param>
+        /// <returns>parser of matching the keyword</returns>
+        public static Parser<string> Key(string keyword, string errorMessage)
+        {
+            CheckNull(keyword, nameof(keyword));
+            return Key(keyword, errorMessage, x => x);
+        }
+
+        /// <summary>
+        /// creates a parser of matching the keyword.
+        /// </summary>
+        /// <param name="keyword">expected keyword</param>
+        /// <returns>parser of matching the keyword</returns>
+        public static Parser<string> Key(string keyword)
+        {
+            return Key(keyword, "Does not match keyword " + keyword);
+        }
+
+        /// <summary>
         /// creates a parser of matching the string with ignoring case.
         /// </summary>
         /// <param name="aString">expected string</param>
@@ -271,22 +338,7 @@ namespace Morilib
         public static Parser<string> IgnoreCase(string aString, string errorMessage)
         {
             CheckNull(aString, nameof(aString));
-            var aStringCase = aString.ToLower();
-
-            return (env, position) =>
-            {
-                var pos2 = Skip(env.ParseString, position, env.Skip);
-                var toParse = env.ParseString;
-
-                if (toParse.Length >= pos2 + aString.Length && toParse.Substring(pos2, aString.Length).ToLower() == aStringCase)
-                {
-                    return new Result<string>(env, pos2 + aString.Length, toParse.Substring(pos2, aString.Length));
-                }
-                else
-                {
-                    return new Result<string>(errorMessage);
-                }
-            };
+            return Str(aString.ToLower(), errorMessage, x => x.ToLower());
         }
 
         /// <summary>
@@ -297,6 +349,28 @@ namespace Morilib
         public static Parser<string> IgnoreCase(string aString)
         {
             return IgnoreCase(aString, "Does not match " + aString);
+        }
+
+        /// <summary>
+        /// creates a parser of matching the keyword with ignoring case.
+        /// </summary>
+        /// <param name="aString">expected keyword</param>
+        /// <param name="errorMessage">error message if this does not match</param>
+        /// <returns>parser of matching the keyword</returns>
+        public static Parser<string> KeyIgnoreCase(string keyword, string errorMessage)
+        {
+            CheckNull(keyword, nameof(keyword));
+            return Key(keyword.ToLower(), errorMessage, x => x.ToLower());
+        }
+
+        /// <summary>
+        /// creates a parser of matching the keyword with ignoring case.
+        /// </summary>
+        /// <param name="keyword">expected keyword</param>
+        /// <returns>parser of matching the keyword</returns>
+        public static Parser<string> KeyIgnoreCase(string keyword)
+        {
+            return KeyIgnoreCase(keyword, "Does not match keyword " + keyword);
         }
 
         /// <summary>

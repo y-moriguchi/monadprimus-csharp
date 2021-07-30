@@ -72,6 +72,17 @@ namespace Morilib
         }
 
         [TestMethod]
+        public void KeyTest()
+        {
+            var expr1 = Key("765");
+
+            Match(expr1, "000765", " +", 3, 6, "765");
+            NoMatch(expr1, "000961", " +", 3, "Does not match keyword 765");
+            Match(expr1, "000   765  346", " +", 3, 9, "765");
+            NoMatch(expr1, "000   765pro", " +", 3, "Does not match keyword 765");
+        }
+
+        [TestMethod]
         public void IgnoreCaseTest()
         {
             var expr1 = IgnoreCase("Abc");
@@ -81,6 +92,18 @@ namespace Morilib
             Match(expr1, "000abc", 3, 6, "abc");
             NoMatch(expr1, "000961", 3, "Does not match Abc");
             Match(expr1, "000   aBC", " +", 3, 9, "aBC");
+        }
+
+        [TestMethod]
+        public void KeyIgnoreCaseTest()
+        {
+            var expr1 = KeyIgnoreCase("Abc");
+
+            Match(expr1, "000Abc", " +", 3, 6, "Abc");
+            Match(expr1, "000ABC", " +", 3, 6, "ABC");
+            NoMatch(expr1, "000961", " +", 3, "Does not match keyword Abc");
+            Match(expr1, "000   ABC  346", " +", 3, 9, "ABC");
+            NoMatch(expr1, "000   ABCpro", " +", 3, "Does not match keyword Abc");
         }
 
         [TestMethod]
