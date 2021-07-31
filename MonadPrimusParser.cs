@@ -33,29 +33,43 @@ namespace Morilib
             public string ParseString { get; private set; }
 
             /// <summary>
-            /// A regex pattern of skip string.
+            /// A pattern of skip string.
             /// </summary>
             public Parser<string> Skip { get; private set; }
+
+            /// <summary>
+            /// A pattern which keyword follow.
+            /// </summary>
+            public Parser<string> Follow { get; private set; }
 
             /// <summary>
             /// constructs initial environment.
             /// </summary>
             /// <param name="parseString">string to parse</param>
             /// <param name="skip">pattern of skip</param>
-            public Env(string parseString, Parser<string> skip)
+            /// <param name="follow">pattern of follow</param>
+            public Env(string parseString, Parser<string> skip, Parser<string> follow)
             {
                 ParseString = parseString;
-                Skip = skip == null ? null : skip;
+                Skip = skip;
+                Follow = follow;
+            }
+
+            /// <summary>
+            /// constructs initial environment.
+            /// </summary>
+            /// <param name="parseString">string to parse</param>
+            /// <param name="skip">pattern of skip</param>
+            public Env(string parseString, Parser<string> skip) : this(parseString, skip, null)
+            {
             }
 
             /// <summary>
             /// constructs initial environment with no skip pattern.
             /// </summary>
             /// <param name="parseString">string to parse</param>
-            public Env(string parseString)
+            public Env(string parseString) : this(parseString, null, null)
             {
-                ParseString = parseString;
-                Skip = null;
             }
         }
 
@@ -133,8 +147,9 @@ namespace Morilib
         /// <param name="toParse">string to parse</param>
         /// <param name="position">starting position of parsing</param>
         /// <param name="skip">skip pattern</param>
+        /// <param name="follow">follow pattern</param>
         /// <returns></returns>
-        public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position, Parser<string> skip)
+        public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position, Parser<string> skip, Parser<string> follow)
         {
             CheckNull(parser, nameof(parser));
             CheckNull(toParse, nameof(toParse));
@@ -142,7 +157,37 @@ namespace Morilib
             {
                 throw new ArgumentOutOfRangeException("invalid position");
             }
-            return parser(new Env(toParse, skip), position);
+            return parser(new Env(toParse, skip, follow), position);
+        }
+
+        /// <summary>
+        /// runs the parser with given condition.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="toParse">string to parse</param>
+        /// <param name="position">starting position of parsing</param>
+        /// <param name="skip">skip regex pattern</param>
+        /// <param name="follow">follow regex pattern</param>
+        /// <returns></returns>
+        public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position, string skip, string follow)
+        {
+            return parser.Run(toParse, position, Regex(skip), Regex(follow));
+        }
+
+        /// <summary>
+        /// runs the parser with given condition.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="toParse">string to parse</param>
+        /// <param name="position">starting position of parsing</param>
+        /// <param name="skip">skip pattern</param>
+        /// <param name="follow">follow pattern</param>
+        /// <returns></returns>
+        public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position, Parser<string> skip)
+        {
+            return parser.Run(toParse, position, skip, null);
         }
 
         /// <summary>
@@ -157,6 +202,36 @@ namespace Morilib
         public static Result<T> Run<T>(this Parser<T> parser, string toParse, int position, string skip)
         {
             return parser.Run(toParse, position, Regex(skip));
+        }
+
+        /// <summary>
+        /// runs the parser with given condition.
+        /// Starting position is beginning of the string.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="toParse">string to parse</param>
+        /// <param name="skip">skip pattern</param>
+        /// <param name="follow">follow regex pattern</param>
+        /// <returns></returns>
+        public static Result<T> Run<T>(this Parser<T> parser, string toParse, Parser<string> skip, Parser<string> follow)
+        {
+            return parser.Run(toParse, 0, skip, follow);
+        }
+
+        /// <summary>
+        /// runs the parser with given condition.
+        /// Starting position is beginning of the string.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="toParse">string to parse</param>
+        /// <param name="skip">skip regex pattern</param>
+        /// <param name="follow">follow regex pattern</param>
+        /// <returns></returns>
+        public static Result<T> Run<T>(this Parser<T> parser, string toParse, string skip, string follow)
+        {
+            return parser.Run(toParse, 0, skip, follow);
         }
 
         /// <summary>
@@ -264,18 +339,13 @@ namespace Morilib
                     {
                         return new Result<string>(env, pos2 + keyword.Length, resultString);
                     }
+                    else if (env.Skip.Run(toParse, pos2 + keyword.Length).IsError && env.Follow.Run(toParse, pos2 + keyword.Length).IsError)
+                    {
+                        return new Result<string>(errorMessage);
+                    }
                     else
                     {
-                        var result = env.Skip.Run(toParse, pos2 + keyword.Length);
-
-                        if (result.IsError)
-                        {
-                            return new Result<string>(errorMessage);
-                        }
-                        else
-                        {
-                            return new Result<string>(env, pos2 + keyword.Length, resultString);
-                        }
+                        return new Result<string>(env, pos2 + keyword.Length, resultString);
                     }
                 }
                 else

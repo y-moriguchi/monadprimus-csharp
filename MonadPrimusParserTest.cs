@@ -10,6 +10,16 @@ namespace Morilib
     [TestClass]
     public class MonadPrimusParserTest
     {
+        private void Match<T>(Parser<T> expr, string toParse, Parser<string> skip, Parser<string> follow, int position, int positionExpected, T valueExpected)
+        {
+            var config = new Env(toParse, skip, follow);
+            var result = expr(config, position);
+
+            Assert.IsNull(result.ErrorMessage, result.ErrorMessage);
+            Assert.AreEqual(positionExpected, result.Position);
+            Assert.AreEqual(valueExpected, result.Value);
+        }
+
         private void Match<T>(Parser<T> expr, string toParse, Parser<string> skip, int position, int positionExpected, T valueExpected)
         {
             var config = new Env(toParse, skip);
@@ -20,6 +30,14 @@ namespace Morilib
             Assert.AreEqual(valueExpected, result.Value);
         }
 
+        private void NoMatch<T>(Parser<T> expr, string toParse, Parser<string> skip, Parser<string> follow, int position, string errorMessage)
+        {
+            var config = new Env(toParse, skip, follow);
+            var result = expr(config, position);
+
+            Assert.AreEqual(errorMessage, result.ErrorMessage);
+        }
+
         private void NoMatch<T>(Parser<T> expr, string toParse, Parser<string> skip, int position, string errorMessage)
         {
             var config = new Env(toParse, skip);
@@ -28,9 +46,19 @@ namespace Morilib
             Assert.AreEqual(errorMessage, result.ErrorMessage);
         }
 
+        private void Match<T>(Parser<T> expr, string toParse, string skip, string follow, int position, int positionExpected, T valueExpected)
+        {
+            Match(expr, toParse, Regex(skip), Regex(follow), position, positionExpected, valueExpected);
+        }
+
         private void Match<T>(Parser<T> expr, string toParse, string skip, int position, int positionExpected, T valueExpected)
         {
             Match(expr, toParse, Regex(skip), position, positionExpected, valueExpected);
+        }
+
+        private void NoMatch<T>(Parser<T> expr, string toParse, string skip, string follow, int position, string errorMessage)
+        {
+            NoMatch(expr, toParse, Regex(skip), Regex(follow), position, errorMessage);
         }
 
         private void NoMatch<T>(Parser<T> expr, string toParse, string skip, int position, string errorMessage)
@@ -76,10 +104,12 @@ namespace Morilib
         {
             var expr1 = Key("765");
 
-            Match(expr1, "000765", " +", 3, 6, "765");
-            NoMatch(expr1, "000961", " +", 3, "Does not match keyword 765");
-            Match(expr1, "000   765  346", " +", 3, 9, "765");
-            NoMatch(expr1, "000   765pro", " +", 3, "Does not match keyword 765");
+            Match(expr1, "000765", " +", "[\\);]", 3, 6, "765");
+            NoMatch(expr1, "000961", " +", "[\\);]", 3, "Does not match keyword 765");
+            Match(expr1, "000   765  346", " +", "[\\);]", 3, 9, "765");
+            NoMatch(expr1, "000   765pro", " +", "[\\);]", 3, "Does not match keyword 765");
+            Match(expr1, "000   765; 346", " +", "[\\);]", 3, 9, "765");
+            Match(expr1, "000   765) 346", " +", "[\\);]", 3, 9, "765");
         }
 
         [TestMethod]
@@ -99,11 +129,13 @@ namespace Morilib
         {
             var expr1 = KeyIgnoreCase("Abc");
 
-            Match(expr1, "000Abc", " +", 3, 6, "Abc");
-            Match(expr1, "000ABC", " +", 3, 6, "ABC");
-            NoMatch(expr1, "000961", " +", 3, "Does not match keyword Abc");
-            Match(expr1, "000   ABC  346", " +", 3, 9, "ABC");
-            NoMatch(expr1, "000   ABCpro", " +", 3, "Does not match keyword Abc");
+            Match(expr1, "000Abc", " +", "[\\);]", 3, 6, "Abc");
+            Match(expr1, "000ABC", " +", "[\\);]", 3, 6, "ABC");
+            NoMatch(expr1, "000961", " +", "[\\);]", 3, "Does not match keyword Abc");
+            Match(expr1, "000   ABC  346", " +", "[\\);]", 3, 9, "ABC");
+            NoMatch(expr1, "000   ABCpro", " +", "[\\);]", 3, "Does not match keyword Abc");
+            Match(expr1, "000   ABC; 346", " +", "[\\);]", 3, 9, "ABC");
+            Match(expr1, "000   ABC) 346", " +", "[\\);]", 3, 9, "ABC");
         }
 
         [TestMethod]
