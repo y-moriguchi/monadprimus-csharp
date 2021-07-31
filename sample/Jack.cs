@@ -14,11 +14,6 @@ namespace Morilib.Sample
             return Key(key).Select(x => "<keyword> " + x + " </keyword>\n");
         }
 
-        static Parser<string> KeyStr(string key)
-        {
-            return Str(key).Select(x => "<keyword> " + x + " </keyword>\n");
-        }
-
         static string Escape(string aString)
         {
             var result = aString;
@@ -41,7 +36,7 @@ namespace Morilib.Sample
             var className = identifier;
             var integerConstant = Regex("[0-9]+").Select(x => "<integerConstant> " + x + " </integerConstant>\n");
             var stringConstant = Regex("\"[^\"\n]*\"").Select(x => "<stringConstant> " + x.Substring(1, x.Length - 2) + " </stringConstant>\n");
-            var keywordConstant = KeyStr("true").Choice(KeyStr("false")).Choice(KeyStr("null")).Choice(KeyStr("this"));
+            var keywordConstant = Keyword("true").Choice(Keyword("false")).Choice(Keyword("null")).Choice(Keyword("this"));
             var op = Symbol("+").Choice(Symbol("-")).Choice(Symbol("*")).Choice(Symbol("/"))
                      .Choice(Symbol("&")).Choice(Symbol("|"))
                      .Choice(Symbol("<")).Choice(Symbol(">")).Choice(Symbol("="));
@@ -93,10 +88,10 @@ namespace Morilib.Sample
                                               from subCall in subroutineCall
                                               from semicolon in Symbol(";")
                                               select doKey + subCall + semicolon;
-                            var returnStatement = from returnKey in Str("return")
+                            var returnStatement = from returnKey in Keyword("return")
                                                   from expr in expression.Option("")
                                                   from semicolon in Symbol(";")
-                                                  select "<keyword> " + returnKey + " </keyword>\n" + expr + semicolon;
+                                                  select returnKey + expr + semicolon;
                             return letStatement.Choice(ifStatement).Choice(whileStatement).Choice(doStatement).Choice(returnStatement);
                         },
                         (statement0, expression, subroutineCall) =>
@@ -182,7 +177,7 @@ namespace Morilib.Sample
         {
             string comment = "([ \t\n]+|//[^\n]*\n|/\\*[\\s\\S]*?\\*/)+";
             var jackParser = BuildParser();
-            var result = jackParser.Run(input, comment);
+            var result = jackParser.Run(input, comment, "[;\\)]");
             
             if(result.IsError)
             {
