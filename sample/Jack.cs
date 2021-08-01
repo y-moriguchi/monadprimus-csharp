@@ -45,7 +45,8 @@ namespace Morilib.Sample
             var statements0 = Letrec<string>(
                 (Parser<string> statements, Parser<string> statement) =>
                 {
-                    return statement.ZeroOrMore((x, y) => x + y, "");
+                    return from stmts in statement.ZeroOrMore((x, y) => x + y, "")
+                           select "<statements>\n" + stmts + "</statements>\n";
                 },
                 (Parser<string> statements, Parser<string> statement) =>
                 {
@@ -61,7 +62,7 @@ namespace Morilib.Sample
                                                from eq in Symbol("=")
                                                from expr in expression
                                                from semicolon in Symbol(";")
-                                               select letKey + name0 + index + eq + expr + semicolon;
+                                               select "<letStatement>\n" + letKey + name0 + index + eq + expr + semicolon + "</letStatement>\n";
                             var elseClause = from elseKey in Keyword("else")
                                              from lbracket1 in Symbol("{")
                                              from stmts in statements
@@ -75,7 +76,8 @@ namespace Morilib.Sample
                                               from stmts in statements
                                               from rbracket1 in Symbol("}")
                                               from elseClause0 in elseClause.Option("")
-                                              select ifKey + lparen1 + expr1 + rparen1 + lbracket1 + stmts + rbracket1 + elseClause0;
+                                              select "<ifStatement>\n" + ifKey + lparen1 + expr1 + rparen1 + lbracket1 + stmts + rbracket1 + elseClause0 +
+                                                     "</ifStatement>\n";
                             var whileStatement = from whileKey in Keyword("while")
                                                  from lparen1 in Symbol("(")
                                                  from expr1 in expression
@@ -83,42 +85,46 @@ namespace Morilib.Sample
                                                  from lbracket1 in Symbol("{")
                                                  from stmts in statements
                                                  from rbracket1 in Symbol("}")
-                                                 select whileKey + lparen1 + expr1 + rparen1 + lbracket1 + stmts + rbracket1;
+                                                 select "<whileStatement>\n" + whileKey + lparen1 + expr1 + rparen1 + lbracket1 + stmts + rbracket1 + "</whileStatement>\n";
                             var doStatement = from doKey in Keyword("do")
                                               from subCall in subroutineCall
                                               from semicolon in Symbol(";")
-                                              select doKey + subCall + semicolon;
+                                              select "<doStatement>\n" + doKey + subCall + semicolon + "</doStatement>\n";
                             var returnStatement = from returnKey in Keyword("return")
                                                   from expr in expression.Option("")
                                                   from semicolon in Symbol(";")
-                                                  select returnKey + expr + semicolon;
+                                                  select "<returnStatement>\n" + returnKey + expr + semicolon + "</returnStatement>\n";
                             return letStatement.Choice(ifStatement).Choice(whileStatement).Choice(doStatement).Choice(returnStatement);
                         },
                         (statement0, expression, subroutineCall) =>
                         {
                             var term = Letrec<string>(
-                                           x => integerConstant
-                                                .Choice(stringConstant)
-                                                .Choice(keywordConstant)
-                                                .Choice(from name in varName
-                                                        from lbracket in Symbol("[")
-                                                        from expr in expression
-                                                        from rbracket in Symbol("]")
-                                                        select name + lbracket + expr + rbracket)
-                                                .Choice(subroutineCall)
-                                                .Choice(varName)
-                                                .Choice(from lparen in Symbol("(")
-                                                        from expr in expression
-                                                        from rparen in Symbol(")")
-                                                        select lparen + expr + rparen)
-                                                .Choice(from uop in unaryOp
-                                                        from term0 in x
-                                                        select uop + term0));
-                            return term.Delimit(op, (x, op0, y) => x + op0 + y);
+                                           x => from t in integerConstant
+                                                          .Choice(stringConstant)
+                                                          .Choice(keywordConstant)
+                                                          .Choice(from name in varName
+                                                                  from lbracket in Symbol("[")
+                                                                  from expr in expression
+                                                                  from rbracket in Symbol("]")
+                                                                  select name + lbracket + expr + rbracket)
+                                                          .Choice(subroutineCall)
+                                                          .Choice(varName)
+                                                          .Choice(from lparen in Symbol("(")
+                                                                  from expr in expression
+                                                                  from rparen in Symbol(")")
+                                                                  select lparen + expr + rparen)
+                                                          .Choice(from uop in unaryOp
+                                                                  from term0 in x
+                                                                  select uop + term0)
+                                                select "<term>\n" + t + "</term>\n");
+
+                            return from expr in term.Delimit(op, (x, op0, y) => x + op0 + y)
+                                   select "<expression>\n" + expr + "</expression>\n";
                         },
                         (statement0, expression, subroutineCall) =>
                         {
-                            var expressionList = expression.Delimit(Symbol(","), (x, op0, y) => x + op0 + y).Option("");
+                            var expressionList = from lst in expression.Delimit(Symbol(","), (x, op0, y) => x + op0 + y).Option("")
+                                                 select "<expressionList>\n" + lst + "</expressionList>\n";
 
                             return (from name in subroutineName
                                     from lparen in Symbol("(")
@@ -140,36 +146,37 @@ namespace Morilib.Sample
                          from type0 in type
                          from varNames in varName.Delimit(Symbol(","), (x, op0, y) => x + op0 + y)
                          from semicolon in Symbol(";")
-                         select key + type0 + varNames + semicolon;
+                         select "<varDec>\n" + key + type0 + varNames + semicolon + "</varDec>\n";
             var subroutineBody = from lbracket in Symbol("{")
                                  from varDecs in varDec.ZeroOrMore((x, y) => x + y, "")
                                  from stat in statements0
                                  from rbracket in Symbol("}")
-                                 select lbracket + varDecs + stat + rbracket;
+                                 select "<subroutineBody>\n" + lbracket + varDecs + stat + rbracket + "</subroutineBody>\n";
             var typeName = from type0 in type
                            from name0 in varName
                            select type0 + name0;
-            var parameterList = typeName.Delimit(Symbol(","), (x, op0, y) => x + op0 + y);
+            var parameterList = from lst in typeName.Delimit(Symbol(","), (x, op0, y) => x + op0 + y).Option("")
+                                select "<parameterList>\n" + lst + "</parameterList>\n";
             var subroutineDec = from key1 in Keyword("constructor").Choice(Keyword("function")).Choice(Keyword("method"))
                                 from type0 in Keyword("void").Choice(type)
                                 from subName in subroutineName
                                 from lparen in Symbol("(")
-                                from plist in parameterList.Option("")
+                                from plist in parameterList
                                 from rparen in Symbol(")")
                                 from subBody in subroutineBody
-                                select key1 + type0 + subName + lparen + plist + rparen + subBody;
+                                select "<subroutineDec>\n" + key1 + type0 + subName + lparen + plist + rparen + subBody + "</subroutineDec>\n";
             var classVarDec = from key in Keyword("static").Choice(Keyword("field"))
                               from type0 in type
                               from varNames in varName.Delimit(Symbol(","), (x, op0, y) => x + op0 + y)
                               from semicolon in Symbol(";")
-                              select key + type0 + varNames + semicolon;
+                              select "<classVarDec>\n" + key + type0 + varNames + semicolon + "</classVarDec>\n";
             var classe = from classKey in Keyword("class")
                          from name in className
                          from lbracket in Symbol("{")
                          from classVarDecs in classVarDec.ZeroOrMore((x, y) => x + y, "")
                          from subroutineDecs in subroutineDec.ZeroOrMore((x, y) => x + y, "")
                          from rbracket in Symbol("}")
-                         select classKey + name + lbracket + classVarDecs + subroutineDecs + rbracket;
+                         select "<class>\n" + classKey + name + lbracket + classVarDecs + subroutineDecs + rbracket + "</class>\n";
             return classe;
         }
 
@@ -185,7 +192,7 @@ namespace Morilib.Sample
             }
             else
             {
-                return "<tokens>\n" + result.Value + "</tokens>";
+                return result.Value;
             }
         }
     }
