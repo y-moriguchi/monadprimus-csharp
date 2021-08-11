@@ -1,14 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using static Morilib.MonadPrimus;
 
 namespace Morilib.Sample
 {
+    /// <summary>
+    /// Hack VM Translator from The Elements of Computing Systems (nand2tetris)
+    /// </summary>
     public class HackVMTranslator
     {
+        const int THIS = 3;
+        const int TEMP = 5;
+        const int STATIC = 16;
+
+        static readonly Parser<int> Offset = Regex("[0-9]+").Select(x => int.Parse(x));
+        static readonly Parser<string> ReferKeys = Key("local").Select(x => "LCL")
+                                                   .Choice(Key("argument").Select(x => "ARG"))
+                                                   .Choice(Key("this").Select(x => "THIS"))
+                                                   .Choice(Key("that").Select(x => "THAT"));
+        static readonly Parser<int> PointerKeys = Key("pointer").Select(x => THIS)
+                                                  .Choice(Key("temp").Select(x => TEMP))
+                                                  .Choice(Key("static").Select(x => STATIC));
         int labelno = 1;
 
         string GetLabel()
@@ -88,8 +100,103 @@ namespace Morilib.Sample
             return builder.ToString();
         }
 
+        string ReferPush(string key, int num)
+        {
+            var builder = new StringBuilder();
+
+            builder.Append("@" + key + "\n");
+            builder.Append("D=M\n");
+            builder.Append("@" + num + "\n");
+            builder.Append("A=D+A\n");
+            builder.Append("D=M\n");
+            builder.Append("@SP\n");
+            builder.Append("A=M\n");
+            builder.Append("M=D\n");
+            builder.Append("@SP\n");
+            builder.Append("M=M+1\n");
+            return builder.ToString();
+        }
+
+        string ReferPop(string key, int num)
+        {
+            var builder = new StringBuilder();
+
+            builder.Append("@SP\n");
+            builder.Append("AM=M-1\n");
+            builder.Append("D=M\n");
+            builder.Append("@R13\n");
+            builder.Append("M=D\n");
+            builder.Append("@" + key + "\n");
+            builder.Append("D=M\n");
+            builder.Append("@" + num + "\n");
+            builder.Append("D=D+A\n");
+            builder.Append("@R14\n");
+            builder.Append("M=D\n");
+            builder.Append("@R13\n");
+            builder.Append("D=M\n");
+            builder.Append("@R14\n");
+            builder.Append("A=M\n");
+            builder.Append("M=D\n");
+            return builder.ToString();
+        }
+
+        string PointerPush(int start, int offset)
+        {
+            var builder = new StringBuilder();
+
+            builder.Append("@" + (start + offset) + "\n");
+            builder.Append("D=M\n");
+            builder.Append("@SP\n");
+            builder.Append("A=M\n");
+            builder.Append("M=D\n");
+            builder.Append("@SP\n");
+            builder.Append("M=M+1\n");
+            return builder.ToString();
+        }
+
+        string PointerPop(int start, int offset)
+        {
+            var builder = new StringBuilder();
+
+            builder.Append("@SP\n");
+            builder.Append("AM=M-1\n");
+            builder.Append("D=M\n");
+            builder.Append("@" + (start + offset) + "\n");
+            builder.Append("M=D\n");
+            return builder.ToString();
+        }
+
+        Parser<string> BuildPush()
+        {
+            var constant = from a2 in Key("constant")
+                           from num in Offset
+                           select Constant(num);
+            var refer = from key in ReferKeys
+                        from num in Offset
+                        select ReferPush(key, num);
+            var pointer = from key in PointerKeys
+                          from num in Offset
+                          select PointerPush(key, num);
+
+            return constant.Choice(refer).Choice(pointer);
+        }
+
+        Parser<string> BuildPop()
+        {
+            var refer = from key in ReferKeys
+                        from num in Offset
+                        select ReferPop(key, num);
+            var pointer = from key in PointerKeys
+                          from num in Offset
+                          select PointerPop(key, num);
+
+            return refer.Choice(pointer);
+        }
+
         Parser<string> BuildParser()
         {
+            var push = BuildPush();
+            var pop = BuildPop();
             var mnemonic =
                 Key("add").Select(Arithmetic2("D+M"))
                 .Choice(Key("sub").Select(Arithmetic2("M-D")))
@@ -101,9 +208,11 @@ namespace Morilib.Sample
                 .Choice(Key("or").Select(Arithmetic2("D|M")))
                 .Choice(Key("not").Select(Arithmetic1("!D")))
                 .Choice(from a1 in Key("push")
-                        from a2 in Key("constant")
-                        from num in Regex("[0-9]+").Select(x => int.Parse(x))
-                        select Constant(num))
+                        from asm in push
+                        select asm)
+                .Choice(from a1 in Key("pop")
+                        from asm in pop
+                        select asm)
                 .Choice(Str(""));
 
             return from a in mnemonic
