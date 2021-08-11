@@ -13,6 +13,7 @@ namespace Morilib.Sample
         const int TEMP = 5;
         const int STATIC = 16;
 
+        static readonly Parser<string> Label = Regex("[A-Za-z_\\.\\:][A-Za-z0-9_\\.\\:]*");
         static readonly Parser<int> Offset = Regex("[0-9]+").Select(x => int.Parse(x));
         static readonly Parser<string> ReferKeys = Key("local").Select(x => "LCL")
                                                    .Choice(Key("argument").Select(x => "ARG"))
@@ -166,6 +167,18 @@ namespace Morilib.Sample
             return builder.ToString();
         }
 
+        string IfGoto(string label)
+        {
+            var builder = new StringBuilder();
+
+            builder.Append("@SP\n");
+            builder.Append("AM=M-1\n");
+            builder.Append("D=M\n");
+            builder.Append("@" + label + "\n");
+            builder.Append("D;JNE\n");
+            return builder.ToString();
+        }
+
         Parser<string> BuildPush()
         {
             var constant = from a2 in Key("constant")
@@ -213,6 +226,15 @@ namespace Morilib.Sample
                 .Choice(from a1 in Key("pop")
                         from asm in pop
                         select asm)
+                .Choice(from v in Key("label")
+                        from lbl in Label
+                        select "(" + lbl + ")\n")
+                .Choice(from v in Key("goto")
+                        from lbl in Label
+                        select "@" + lbl + "\n0;JMP\n")
+                .Choice(from v in Key("if-goto")
+                        from lbl in Label
+                        select IfGoto(lbl))
                 .Choice(Str(""));
 
             return from a in mnemonic
@@ -227,6 +249,10 @@ namespace Morilib.Sample
             var lines = input.Split('\n');
             var builder = new StringBuilder();
 
+            builder.Append("@256\n");
+            builder.Append("D=A\n");
+            builder.Append("@SP\n");
+            builder.Append("M=D\n");
             foreach (var line in lines)
             {
                 if (line != "\n")
