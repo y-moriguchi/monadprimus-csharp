@@ -1,4 +1,7 @@
-﻿using System;
+﻿/*
+ * This source code is under the Unlicense
+ */
+using System;
 using System.Text;
 using static Morilib.MonadPrimus;
 
@@ -11,7 +14,6 @@ namespace Morilib.Sample
     {
         const int THIS = 3;
         const int TEMP = 5;
-        const int STATIC = 16;
 
         static readonly Parser<string> Label = Regex("[A-Za-z_\\.\\:][A-Za-z0-9_\\.\\:]*");
         static readonly Parser<int> Offset = Regex("[0-9]+").Select(x => int.Parse(x));
@@ -20,13 +22,25 @@ namespace Morilib.Sample
                                                    .Choice(Key("this").Select(x => "THIS"))
                                                    .Choice(Key("that").Select(x => "THAT"));
         static readonly Parser<int> PointerKeys = Key("pointer").Select(x => THIS)
-                                                  .Choice(Key("temp").Select(x => TEMP))
-                                                  .Choice(Key("static").Select(x => STATIC));
+                                                  .Choice(Key("temp").Select(x => TEMP));
         int labelno = 1;
+        static string functionName = "";
 
         string GetLabel()
         {
-            return "LABEL" + (labelno++);
+            return "LABEL$" + labelno++;
+        }
+
+        string GetInnerLabel(string label)
+        {
+            return functionName + "$" + label;
+        }
+
+        string GetStaticLabel(string label)
+        {
+            var className = functionName.Split('.')[0];
+
+            return className + "." + label;
         }
 
         Func<string, string> Arithmetic1(string op)
@@ -167,6 +181,32 @@ namespace Morilib.Sample
             return builder.ToString();
         }
 
+        string StaticPush(int lbl)
+        {
+            var builder = new StringBuilder();
+
+            builder.Append("@" + GetStaticLabel(lbl.ToString()) + "\n");
+            builder.Append("D=M\n");
+            builder.Append("@SP\n");
+            builder.Append("A=M\n");
+            builder.Append("M=D\n");
+            builder.Append("@SP\n");
+            builder.Append("M=M+1\n");
+            return builder.ToString();
+        }
+
+        string StaticPop(int lbl)
+        {
+            var builder = new StringBuilder();
+
+            builder.Append("@SP\n");
+            builder.Append("AM=M-1\n");
+            builder.Append("D=M\n");
+            builder.Append("@" + GetStaticLabel(lbl.ToString()) + "\n");
+            builder.Append("M=D\n");
+            return builder.ToString();
+        }
+
         string IfGoto(string label)
         {
             var builder = new StringBuilder();
@@ -174,8 +214,105 @@ namespace Morilib.Sample
             builder.Append("@SP\n");
             builder.Append("AM=M-1\n");
             builder.Append("D=M\n");
-            builder.Append("@" + label + "\n");
+            builder.Append("@" + GetInnerLabel(label) + "\n");
             builder.Append("D;JNE\n");
+            return builder.ToString();
+        }
+
+        string DefineFunction(string f, int n)
+        {
+            var builder = new StringBuilder();
+
+            functionName = f;
+            builder.Append("(" + f + ")\n");
+            for(int i = 0; i < n; i++)
+            {
+                builder.Append("@LCL\n");
+                builder.Append("D=M\n");
+                builder.Append("@" + i + "\n");
+                builder.Append("A=D+A\n");
+                builder.Append("M=0\n");
+            }
+            return builder.ToString();
+        }
+
+        void PushLabel(StringBuilder builder, string label)
+        {
+            builder.Append("@" + label + "\n");
+            builder.Append("D=M\n");
+            builder.Append("@SP\n");
+            builder.Append("A=M\n");
+            builder.Append("M=D\n");
+            builder.Append("@SP\n");
+            builder.Append("M=M+1\n");
+        }
+
+        public string CallFunction(string f, int n)
+        {
+            var builder = new StringBuilder();
+            var returnLabel = GetLabel();
+
+            builder.Append("@" + returnLabel + "\n");
+            builder.Append("D=A\n");
+            builder.Append("@SP\n");
+            builder.Append("A=M\n");
+            builder.Append("M=D\n");
+            builder.Append("@SP\n");
+            builder.Append("M=M+1\n");
+            PushLabel(builder, "LCL");
+            PushLabel(builder, "ARG");
+            PushLabel(builder, "THIS");
+            PushLabel(builder, "THAT");
+            builder.Append("@SP\n");
+            builder.Append("D=M\n");
+            builder.Append("@" + (n + 5) + "\n");
+            builder.Append("D=D-A\n");
+            builder.Append("@ARG\n");
+            builder.Append("M=D\n");
+            builder.Append("@SP\n");
+            builder.Append("D=M\n");
+            builder.Append("@LCL\n");
+            builder.Append("M=D\n");
+            builder.Append("@" + f + "\n");
+            builder.Append("0;JMP\n");
+            builder.Append("(" + returnLabel + ")\n");
+            return builder.ToString();
+        }
+
+        void RestoreLabel(StringBuilder builder, string label, int offset)
+        {
+            builder.Append("@LCL\n");
+            builder.Append("D=M\n");
+            builder.Append("@" + offset + "\n");
+            builder.Append("A=D-A\n");
+            builder.Append("D=M\n");
+            builder.Append("@" + label + "\n");
+            builder.Append("M=D\n");
+        }
+
+        string ReturnFunction()
+        {
+            var builder = new StringBuilder();
+
+            RestoreLabel(builder, "15", 5);
+            builder.Append("@SP\n");
+            builder.Append("M=M-1\n");
+            builder.Append("A=M\n");
+            builder.Append("D=M\n");
+            builder.Append("@ARG\n");
+            builder.Append("A=M\n");
+            builder.Append("M=D\n");
+            builder.Append("@ARG\n");
+            builder.Append("D=M+1\n");
+            builder.Append("@SP\n");
+            builder.Append("M=D\n");
+            RestoreLabel(builder, "THAT", 1);
+            RestoreLabel(builder, "THIS", 2);
+            RestoreLabel(builder, "ARG", 3);
+            RestoreLabel(builder, "LCL", 4);
+            builder.Append("@15\n");
+            builder.Append("A=M\n");
+            builder.Append("0;JMP\n");
             return builder.ToString();
         }
 
@@ -190,8 +327,11 @@ namespace Morilib.Sample
             var pointer = from key in PointerKeys
                           from num in Offset
                           select PointerPush(key, num);
+            var staticDef = from a2 in Key("static")
+                            from lbl in Offset
+                            select StaticPush(lbl);
 
-            return constant.Choice(refer).Choice(pointer);
+            return constant.Choice(refer).Choice(pointer).Choice(staticDef);
         }
 
         Parser<string> BuildPop()
@@ -202,8 +342,11 @@ namespace Morilib.Sample
             var pointer = from key in PointerKeys
                           from num in Offset
                           select PointerPop(key, num);
+            var staticDef = from a2 in Key("static")
+                            from lbl in Offset
+                            select StaticPop(lbl);
 
-            return refer.Choice(pointer);
+            return refer.Choice(pointer).Choice(staticDef);
         }
 
         Parser<string> BuildParser()
@@ -228,13 +371,22 @@ namespace Morilib.Sample
                         select asm)
                 .Choice(from v in Key("label")
                         from lbl in Label
-                        select "(" + lbl + ")\n")
+                        select "(" + GetInnerLabel(lbl) + ")\n")
                 .Choice(from v in Key("goto")
                         from lbl in Label
-                        select "@" + lbl + "\n0;JMP\n")
+                        select "@" + GetInnerLabel(lbl) + "\n0;JMP\n")
                 .Choice(from v in Key("if-goto")
                         from lbl in Label
                         select IfGoto(lbl))
+                .Choice(from v in Key("function")
+                        from f in Label
+                        from k in Offset
+                        select DefineFunction(f, k))
+                .Choice(from v in Key("call")
+                        from f in Label
+                        from n in Offset
+                        select CallFunction(f, n))
+                .Choice(Key("return").Select(x => ReturnFunction()))
                 .Choice(Str(""));
 
             return from a in mnemonic
@@ -249,10 +401,6 @@ namespace Morilib.Sample
             var lines = input.Split('\n');
             var builder = new StringBuilder();
 
-            builder.Append("@256\n");
-            builder.Append("D=A\n");
-            builder.Append("@SP\n");
-            builder.Append("M=D\n");
             foreach (var line in lines)
             {
                 if (line != "\n")
