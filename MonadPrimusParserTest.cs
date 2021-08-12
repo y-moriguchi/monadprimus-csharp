@@ -286,6 +286,16 @@ namespace Morilib
         }
 
         [TestMethod]
+        public void MatchIfTest()
+        {
+            var expr1 = Regex("[0-9]+").MatchIf(x => x == "765");
+
+            Match(expr1, "765", 0, 3, "765");
+            NoMatch(expr1, "666", 0, "Value is not matched");
+            NoMatch(expr1, "aaa", 0, "Does not match pattern [0-9]+");
+        }
+
+        [TestMethod]
         public void Letrec1Test()
         {
             var expr1 = Letrec<string>(x => (from a in Str("(")

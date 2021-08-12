@@ -905,6 +905,49 @@ namespace Morilib
         }
 
         /// <summary>
+        /// matches if the result value applied to the given predicate is true. 
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="pred">predicate to test</param>
+        /// <param name="errorMessage">error message if this is not matched</param>
+        /// <returns>result parser</returns>
+        public static Parser<T> MatchIf<T>(this Parser<T> parser, Func<T, bool> pred, string errorMessage)
+        {
+            CheckNull(parser, nameof(parser));
+            CheckNull(pred, nameof(pred));
+            return (env, position) =>
+            {
+                Result<T> result;
+
+                if((result = parser(env, position)).IsError)
+                {
+                    return result;
+                }
+                else if(pred(result.Value))
+                {
+                    return result;
+                }
+                else
+                {
+                    return new Result<T>(errorMessage);
+                }
+            };
+        }
+
+        /// <summary>
+        /// matches if the result value applied to the given predicate is true. 
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="pred">predicate to test</param>
+        /// <returns>result parser</returns>
+        public static Parser<T> MatchIf<T>(this Parser<T> parser, Func<T, bool> pred)
+        {
+            return MatchIf(parser, pred, "Value is not matched");
+        }
+
+        /// <summary>
         /// changes environment locally.
         /// </summary>
         /// <typeparam name="T">type</typeparam>
