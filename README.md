@@ -17,7 +17,7 @@ To convert a value to identity monad, ToIdentity method is available.
 ToIdentity is a Unit function of identity monad.
 
 ```csharp
-var monad1 = 765.ToIdentity()
+var monad1 = MonadPrimus.ToIdentity(765)
 ```
 
 To get a value from identity monad, Value property is available.
@@ -25,15 +25,15 @@ To get a value from identity monad, Value property is available.
 To bind two identity monad, SelectMany method is avaliable.
 
 ```csharp
-var monad = 765.ToIdentity().SelectMany(x => (x + 346).ToIdentity());
+var monad = MonadPrimus.ToIdentity(765).SelectMany(x => (x + 346).ToIdentity());
 // monad.Value = 1111
 ```
 
 MonadPrimus C# supports SelectMany method which can use LINQ query syntax.
 
 ```csharp
-var monad = from a in 765.ToIdentity()
-            from b in 346.ToIdentity()
+var monad = from a in MonadPrimus.ToIdentity(765)
+            from b in MonadPrimus.ToIdentity(346)
             select a + b;
 // monad.Value = 1111
 ```
@@ -41,7 +41,7 @@ var monad = from a in 765.ToIdentity()
 This supports Select method to map a value of identity monad.
 
 ```csharp
-var monad = 29.ToIdentity().Select(x => x * x);
+var monad = MonadPrimus.ToIdentity(29).Select(x => x * x);
 // monad.Value = 841
 ```
 
@@ -50,7 +50,7 @@ To convert a value to Maybe monad, ToMaybe method is available.
 ToIdentity is a Unit function of Maybe monad.
 
 ```csharp
-var monad1 = 765.ToMaybe();
+var monad1 = MonadPrimus.ToMaybe(765);
 ```
 
 To get a value from Maybe monad, Value property is available.  
@@ -59,21 +59,21 @@ To check the Maybe monad has a value, HasValue property is available.
 A Maybe monad which has no value, Nothing field is available.
 
 ```csharp
-var monad1 = Maybe<int>.Nothing;
+var monad1 = MonadPrimus.Maybe<int>.Nothing;
 ```
 
 To bind two Maybe monad, SelectMany method is avaliable.
 
 ```csharp
-var monad = 765.ToMaybe().SelectMany(x => (x + 346).ToMaybe());
+var monad = MonadPrimus.ToMaybe(765).SelectMany(x => MonadPrimus.ToMaybe(x + 346));
 // monad.Value = 1111
 ```
 
 MonadPrimus C# supports SelectMany method which can use LINQ query syntax.
 
 ```csharp
-var monad = from a in 765.ToMaybe()
-            from b in 346.ToMaybe()
+var monad = from a in MonadPrimus.ToMaybe(765)
+            from b in MonadPrimus.ToMaybe(346)
             select a + b;
 // monad.Value = 1111
 ```
@@ -81,15 +81,15 @@ var monad = from a in 765.ToMaybe()
 This supports Select method to map a value of Maybe monad.
 
 ```csharp
-var monad = 29.ToMaybe().Select(x => x * x);
+var monad = MonadPrimus.ToMaybe(29).Select(x => x * x);
 // monad.Value = 841
 ```
 
 This also supports Where method.
 
 ```csharp
-var monad1 = 27.ToMaybe().Where(x => x < 100);
-var monad2 = 27.ToMaybe().Where(x => x > 100);
+var monad1 = MonadPrimus.ToMaybe(27).Where(x => x < 100);
+var monad2 = MonadPrimus.ToMaybe(27).Where(x => x > 100);
 // monad1.Value    = 27
 // monad2.HasValue = False
 ```
@@ -99,8 +99,8 @@ To create the Either monad which has right value, ToRight method is supported.
 To create the Either monad which has left value, ToLeft method is supproted.
 
 ```csharp
-var monad1 = Either.ToRight<string, int>(27);
-var monad2 = Either.ToLeft<string, int>("nothing");
+var monad1 = MonadPrimus.Either.ToRight<string, int>(27);
+var monad2 = MonadPrimus.Either.ToLeft<string, int>("nothing");
 // monad1.Right = 27
 // monad2.Left  = "nothing"
 
@@ -116,21 +116,21 @@ To convert a value to Either monad, ToEither method is available.
 ToIdentity is a Unit function of Either monad.
 
 ```csharp
-var monad = 765.ToEither<string, int>();
+var monad = MonadPrimus.ToEither<string, int>(765);
 ```
 
 To bind two Either monad, SelectMany method is avaliable.
 
 ```csharp
-var monad = 765.ToEither<string, int>().SelectMany(x => (x + 346).ToEither<int, string>());
+var monad = MonadPrimus.ToEither<string, int>(765).SelectMany(x => MonadPrimus.ToEither<int, string>(x + 346));
 // monad.Right = 1111
 ```
 
 MonadPrimus C# supports SelectMany method which can use LINQ query syntax.
 
 ```csharp
-var monad = from a in 765.ToEither<string, int>()
-            from b in 346.ToEither<string, int>()
+var monad = from a in MonadPrimus.ToEither<string, int>(765)
+            from b in MonadPrimus.ToEither<string, int>(346)
             select a + b;
 // monad.Right = 1111
 ```
@@ -138,7 +138,7 @@ var monad = from a in 765.ToEither<string, int>()
 This supports Select method to map a value of Either monad.
 
 ```csharp
-var monad = 29.ToEither<string, int>().Select(x => x * x);
+var monad = MonadPrimus.ToEither<string, int>(29).Select(x => x * x);
 // monad.Right = 841
 ```
 
@@ -147,7 +147,7 @@ To convert a value to State monad, ToState method is available.
 ToIdentity is a Unit function of State monad.
 
 ```csharp
-var monad = "765".ToState<int, string>();
+var monad = MonadPrimus.ToState<int, string>("765");
 // monad(2) = ("765", 2)
 ```
 
@@ -182,7 +182,7 @@ var res11 = m11("1");
 To get a state from the State monad, Get method is available.
 
 ```csharp
-var monad = from x in "765".ToState<int, string>()
+var monad = from x in MonadPrimus.ToState<int, string>("765")
             from y in MonadPrimus.Get<int>()
             select y;
 var result = monad(346);
@@ -194,7 +194,7 @@ var result = monad(346);
 To set a state to the State monad, Put method is available.
 
 ```csharp
-var monad = from x in "765".ToState<int, string>()
+var monad = from x in MonadPrimus.ToState<int, string>("765")
             from y in MonadPrimus.Put<int, string>(876)
             select x;
 var result = monad(666);
@@ -206,7 +206,7 @@ var result = monad(666);
 To modify a state of the State monad, Modify method is available.
 
 ```csharp
-var monad = from x in "765".ToState<int, string>()
+var monad = from x in MonadPrimus.ToState<int, string>("765")
             from y in MonadPrimus.Modify<int, string>(x => x * x)
             select x;
 var result = monad(29);
@@ -218,7 +218,7 @@ var result = monad(29);
 This supports Select method to map a value of State monad.
 
 ```csharp
-var monad = 29.ToState<int, int>().Select(x => x * x);
+var monad = MonadPrimus.ToState<int, int>(29).Select(x => x * x);
 var result = monad(765);
 
 // result.Value = 841
@@ -230,7 +230,7 @@ To convert a value to Reader monad, ToState method is available.
 ToIdentity is a Unit function of Reader monad.
 
 ```csharp
-var monad = 765.ToReader<int, int>();
+var monad = MonadPrimus.ToReader<int, int>(765);
 // monad(27) = 765
 ```
 
@@ -254,7 +254,7 @@ var m11 = from x in new MonadPrimus.Reader<string, int>(x => int.Parse(x) + 1)
 To get environment from the Reader monad, Ask method is available.
 
 ```csharp
-var monad = from x in "765".ToReader<string, int>()
+var monad = from x in MonadPrimus.ToReader<string, int>("765")
             from y in MonadPrimus.Ask<int, int>()
             select y;
 // monad(346) = 346
@@ -274,7 +274,7 @@ var monad = from x in MonadPrimus.Ask<string>()
 This supports Select method to map a value of Reader monad.
 
 ```csharp
-var monad = 29.ToReader<int, int>().Select(x => x * x);
+var monad = MonadPrimus.ToReader<int, int>(29).Select(x => x * x);
 // moand(27) = 841
 ```
 
@@ -293,7 +293,7 @@ To convert a value to Writer monad, ToWriter method is available.
 ToIdentity is a Unit function of Writer monad.
 
 ```csharp
-var monad = 765.ToWriter<int, string>()
+var monad = MonadPrimus.ToWriter<int, string>(765)
 var result = monad();
 
 // result.Value = 765
@@ -326,7 +326,7 @@ var res11 = m11();
 To append the result to the Writer monad, Tell method is available.
 
 ```csharp
-var monad = from x in 765.ToWriter<int, string>()
+var monad = from x in MonadPrimus.ToWriter<int, string>(765)
             from y in MonadPrimus.Tell<int, string>("append")
             select x;
 var result = monad();
@@ -338,7 +338,7 @@ var result = monad();
 This supports Select method to map a value of Reader monad.
 
 ```csharp
-var monad = 29.ToWriter<int, string>().Select(x => x * x);
+var monad = MonadPrimus.ToWriter<int, string>(29).Select(x => x * x);
 var result = moand();
 
 // result.Value = 841
@@ -350,7 +350,7 @@ To convert a value to Continuation monad, ToCont method is available.
 ToIdentity is a Unit function of Continuation monad.
 
 ```csharp
-765.ToCont<int, int>()(x => x + 346);   // 1111
+MonadPrimus.ToCont<int, int>(765)(x => x + 346);   // 1111
 ```
 
 To bind two Continuation monad, SelectMany method is avaliable.
@@ -365,8 +365,8 @@ var m11 = m01.SelectMany<int, int, int>(x => y => y(x + 100));
 MonadPrimus C# supports SelectMany method which can use LINQ query syntax.
 
 ```csharp
-var m11 = from x in 765.ToCont<int, int>()
-          from y in 100.ToCont<int, int>()
+var m11 = from x in MonadPrimus.ToCont<int, int>(765)
+          from y in MonadPrimus.ToCont<int, int>(100)
           select x + y;
 
 // m11(x => x + 11) = 876
@@ -376,16 +376,16 @@ To get current continuation from Continuation monad, CallCC method is available.
 
 ```csharp
 var m11 = MonadPrimus.CallCC<int, int>(
-    exit => from a in 1.ToCont<int, int>()
-            from b in 7.ToCont<int, int>()
-            from c in a + b < 10 ? exit(666) : 6.ToCont<int, int>()
-            from d in 5.ToCont<int, int>()
+    exit => from a in MonadPrimus.ToCont<int, int>(1)
+            from b in MonadPrimus.ToCont<int, int>(7)
+            from c in a + b < 10 ? exit(666) : MonadPrimus.ToCont<int, int>(6)
+            from d in MonadPrimus.ToCont<int, int>(5)
             select a + b + c + d);
 var m12 = MonadPrimus.CallCC<int, int>(
-    exit => from a in 8.ToCont<int, int>()
-            from b in 7.ToCont<int, int>()
-            from c in a + b < 10 ? exit(666) : 6.ToCont<int, int>()
-            from d in 5.ToCont<int, int>()
+    exit => from a in MonadPrimus.ToCont<int, int>(8)
+            from b in MonadPrimus.ToCont<int, int>(7)
+            from c in a + b < 10 ? exit(666) : MonadPrimus.ToCont<int, int>(6)
+            from d in MonadPrimus.ToCont<int, int>(5)
             select a + b + c + d);
 
 // m11(x => x) = 666
@@ -548,7 +548,7 @@ ToParser method returns the given value itself.
 ToParser method is monadic Unit function.
 
 ```csharp
-var res1 = MonadPrimus.ToParser(765);
+var res1 = MonadPrimus.ToParser(MonadPrimus765);
 
 //res1.Run("");   // Match, value: 765
 ```
