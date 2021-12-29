@@ -979,6 +979,19 @@ namespace Morilib
         }
 
         /// <summary>
+        /// maps the continuation monad with the given function.
+        /// </summary>
+        /// <typeparam name="A">type of input value</typeparam>
+        /// <typeparam name="B">type of mapped value</typeparam>
+        /// <param name="m">monad</param>
+        /// <param name="k">map function</param>
+        /// <returns>mapped monad</returns>
+        public static Cont<U, Ans> Select<T, U, Ans>(this Cont<T, Ans> m, Func<T, U> k)
+        {
+            return m.SelectMany(x => ToCont<U, Ans>(k(x)));
+        }
+
+        /// <summary>
         /// A bind function of continuation monad.
         /// </summary>
         /// <typeparam name="T">input type before bind</typeparam>

@@ -813,6 +813,24 @@ namespace Morilib
         }
 
         [TestMethod]
+        public void ContSelect01Test()
+        {
+            MonadPrimus.Cont<int, int> m01 = x => x(765);
+            var m11 = m01.Select(x => x + 100);
+
+            Assert.AreEqual(876, m11(x => x + 11));
+        }
+
+        [TestMethod]
+        public void ContSelect02Test()
+        {
+            var m11 = from x in 765.ToCont<int, int>()
+                      select x + 100;
+
+            Assert.AreEqual(876, m11(x => x + 11));
+        }
+
+        [TestMethod]
         public void ContSelectMany01Test()
         {
             MonadPrimus.Cont<int, int> m01 = x => x(765);
