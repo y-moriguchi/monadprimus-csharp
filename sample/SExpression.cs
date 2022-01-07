@@ -141,18 +141,25 @@ namespace Morilib.Sample
                        .Choice(Str("#f").Select(d => (Datum)new Atom(false)))
                        .Choice(Regex(@"[^\s\(\)#\.]+").Select(d => (Datum)new Atom(d)));
             var expr = Letrec<Datum>((x, y) => (from a in Str("(")
-                                                from b in y
+                                                from b in y.Option(Nil.Instance)
                                                 from c in Str(")")
                                                 select b)
                                                .Choice(atom),
                                      (x, y) => (from a in x
-                                                from b in y
-                                                select (Datum)new Cons(a, b))
-                                               .Choice(from a in Str(".")
-                                                       from b in x
-                                                       select b))
-                                               .Choice(Str("").Select(d => (Datum)Nil.Instance));
-            var skip1 = Regex("[ \t]")
+                                                from b in (from d in Str(".")
+                                                           from c in x
+                                                           select c)
+                                                          .Choice(y.Option(Nil.Instance))
+                                                select (Datum)new Cons(a, b)));
+            var skip1 = Regex(@"[\s]+")
+                        .Choice(from a in Str("#;")
+                                from b in Letrec<string>(x => from _a in Regex(@"[\s]*\(")
+                                                              from _b in atom.Select(_d => "").Choice(Regex(@"[\.\s]+")).ZeroOrMore()
+                                                              from _c in x.Option()
+                                                              from _d in atom.Select(_d => "").Choice(Regex(@"[\.\s]+")).ZeroOrMore()
+                                                              from _e in Str(")")
+                                                              select _b)
+                                select b)
                         .Choice(Letrec<string>((x, y) => from a in Str("#|")
                                                          from b in y
                                                          from c in Str("|#")
@@ -163,7 +170,15 @@ namespace Morilib.Sample
                                                                  select b)));
             var skip = skip1.OneOrMore();
 
-            return expr.Run(aString, skip).Value;
+            var result = expr.Run(aString, skip);
+            if(result.IsError)
+            {
+                throw new Exception(result.ErrorMessage);
+            }
+            else
+            {
+                return expr.Run(aString, skip).Value;
+            }
         }
     }
 }
