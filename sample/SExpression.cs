@@ -159,6 +159,7 @@ namespace Morilib.Sample
                                                               from _d in atom.Select(_d => "").Choice(Regex(@"[\.\s]+")).ZeroOrMore()
                                                               from _e in Str(")")
                                                               select _b)
+                                          .Choice(atom.Select(_x => ""))
                                 select b)
                         .Choice(Letrec<string>((x, y) => from a in Str("#|")
                                                          from b in y
