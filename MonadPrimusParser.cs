@@ -2,6 +2,7 @@
  * This source code is under the Unlicense
  */
 using System;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Morilib
@@ -528,6 +529,60 @@ namespace Morilib
         public static Parser<double> Real()
         {
             return Regex(PatternReal, "Does not match the real number").Select(x => double.Parse(x));
+        }
+
+        private static string FromChar(char x)
+        {
+            switch (x)
+            {
+                case 'a': return "\a";
+                case 'b': return "\b";
+                case 'f': return "\f";
+                case 'n': return "\n";
+                case 'r': return "\r";
+                case 't': return "\t";
+                case 'v': return "\v";
+                default: throw new Exception("illegal sequence");
+            }
+        }
+
+        private static string CodeToString(int x)
+        {
+            StringBuilder builder = new StringBuilder();
+
+            builder.Append((char)x);
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// creates a parser of string literal.
+        /// </summary>
+        /// <param name="errorMessage">error message</param>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> StringLiteral(string errorMessage)
+        {
+            var letter = Regex(@"\\[abfnrtv]").Select(x => FromChar(x[1]))
+                         .Choice(Regex(@"\\x[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]").Select(
+                             x => CodeToString(Convert.ToInt32(x.Substring(2), 16))))
+                         .Choice(Regex(@"\\x[0-9A-Fa-f][0-9A-Fa-f]").Select(
+                             x => CodeToString(Convert.ToInt32(x.Substring(2), 16))))
+                         .Choice(Regex(@"\\.").Select(x => x.Substring(1)))
+                         .Choice(Regex("[^\\\\\\\"]+"));
+            var letters = letter.ZeroOrMore((x, y) => x + y, "");
+
+            return (from a in Str("\"")
+                    from x in letters
+                    from c in Str("\"")
+                    select x).SelectError(x => errorMessage);
+        }
+
+        /// <summary>
+        /// creates a parser of string literal.
+        /// </summary>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> StringLiteral()
+        {
+            return StringLiteral("Does not match a string literal");
         }
 
         /// <summary>
