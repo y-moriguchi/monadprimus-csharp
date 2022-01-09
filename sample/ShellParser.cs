@@ -10,20 +10,6 @@ namespace Morilib.Sample
     /// </summary>
     public class ShellParser
     {
-        private static Parser<string> CreateHereDocument(string eof)
-        {
-            var here = Local(from a in (from _1 in Str(eof).Not()
-                                        from b in Regex("[\\s\\S]")
-                                        select b).ZeroOrMore((a, b) => a + b, "")
-                             from b in Str(eof)
-                             select a + b,
-                             env => new Env(env.ParseString));
-
-            return from a in Str("\n")
-                   from b in here
-                   select a + b;
-        }
-
         private static Parser<string> CreateShellParser()
         {
             Parser<string> command = null;
