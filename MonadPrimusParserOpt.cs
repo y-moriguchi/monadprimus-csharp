@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿/*
+ * This source code is under the Unlicense
+ */
+using System;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Morilib
 {
