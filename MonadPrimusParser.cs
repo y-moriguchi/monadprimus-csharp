@@ -126,9 +126,10 @@ namespace Morilib
             /// constructs result of parsing with error message.
             /// </summary>
             /// <param name="errorMessage"></param>
-            public Result(string errorMessage)
+            public Result(string errorMessage, int position)
             {
                 ErrorMessage = errorMessage;
+                Position = position;
             }
         }
 
@@ -316,7 +317,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return new Result<string>(errorMessage);
+                    return new Result<string>(errorMessage, position);
                 }
             };
         }
@@ -342,7 +343,7 @@ namespace Morilib
                     }
                     else if (env.Skip.Run(toParse, pos2 + keyword.Length).IsError && env.Follow.Run(toParse, pos2 + keyword.Length).IsError)
                     {
-                        return new Result<string>(errorMessage);
+                        return new Result<string>(errorMessage, pos2 + keyword.Length);
                     }
                     else
                     {
@@ -351,7 +352,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return new Result<string>(errorMessage);
+                    return new Result<string>(errorMessage, pos2);
                 }
             };
         }
@@ -466,7 +467,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return new Result<string>(errorMessage);
+                    return new Result<string>(errorMessage, pos2);
                 }
             };
         }
@@ -498,7 +499,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return new Result<int>(errorMessage);
+                    return new Result<int>(errorMessage, pos2);
                 }
             };
         }
@@ -614,7 +615,7 @@ namespace Morilib
 
                 if (result.IsError)
                 {
-                    return new Result<U>(result.ErrorMessage);
+                    return new Result<U>(result.ErrorMessage, result.Position);
                 }
                 else
                 {
@@ -641,7 +642,7 @@ namespace Morilib
 
                 if (result1.IsError)
                 {
-                    return new Result<U>(result1.ErrorMessage);
+                    return new Result<U>(result1.ErrorMessage, result1.Position);
                 }
                 else
                 {
@@ -691,7 +692,7 @@ namespace Morilib
                     {
                         throw new InvalidOperationException("message cannot be null");
                     }
-                    return new Result<T>(message);
+                    return new Result<T>(message, result.Position);
                 }
                 else
                 {
@@ -920,7 +921,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return new Result<T>("Unexpected match");
+                    return new Result<T>("Unexpected match", position);
                 }
             };
         }
@@ -985,7 +986,7 @@ namespace Morilib
                 }
                 else
                 {
-                    return new Result<T>(errorMessage);
+                    return new Result<T>(errorMessage, position);
                 }
             };
         }

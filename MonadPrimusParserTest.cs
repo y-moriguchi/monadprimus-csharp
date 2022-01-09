@@ -30,19 +30,21 @@ namespace Morilib
             Assert.AreEqual(valueExpected, result.Value);
         }
 
-        private void NoMatch<T>(Parser<T> expr, string toParse, Parser<string> skip, Parser<string> follow, int position, string errorMessage)
+        private void NoMatch<T>(Parser<T> expr, string toParse, Parser<string> skip, Parser<string> follow, int position, int positionExpected, string errorMessage)
         {
             var config = new Env(toParse, skip, follow);
             var result = expr(config, position);
 
+            Assert.AreEqual(positionExpected, result.Position);
             Assert.AreEqual(errorMessage, result.ErrorMessage);
         }
 
-        private void NoMatch<T>(Parser<T> expr, string toParse, Parser<string> skip, int position, string errorMessage)
+        private void NoMatch<T>(Parser<T> expr, string toParse, Parser<string> skip, int position, int positionExpected, string errorMessage)
         {
             var config = new Env(toParse, skip);
             var result = expr(config, position);
 
+            Assert.AreEqual(positionExpected, result.Position);
             Assert.AreEqual(errorMessage, result.ErrorMessage);
         }
 
@@ -56,14 +58,14 @@ namespace Morilib
             Match(expr, toParse, Regex(skip), position, positionExpected, valueExpected);
         }
 
-        private void NoMatch<T>(Parser<T> expr, string toParse, string skip, string follow, int position, string errorMessage)
+        private void NoMatch<T>(Parser<T> expr, string toParse, string skip, string follow, int position, int positionExpected, string errorMessage)
         {
-            NoMatch(expr, toParse, Regex(skip), Regex(follow), position, errorMessage);
+            NoMatch(expr, toParse, Regex(skip), Regex(follow), position, positionExpected, errorMessage);
         }
 
-        private void NoMatch<T>(Parser<T> expr, string toParse, string skip, int position, string errorMessage)
+        private void NoMatch<T>(Parser<T> expr, string toParse, string skip, int position, int positionExpected, string errorMessage)
         {
-            NoMatch(expr, toParse, Regex(skip), position, errorMessage);
+            NoMatch(expr, toParse, Regex(skip), position, positionExpected, errorMessage);
         }
 
         private void Match<T>(Parser<T> expr, string toParse, int position, int positionExpected, T valueExpected)
@@ -76,11 +78,12 @@ namespace Morilib
             Assert.AreEqual(valueExpected, result.Value);
         }
 
-        private void NoMatch<T>(Parser<T> expr, string toParse, int position, string errorMessage)
+        private void NoMatch<T>(Parser<T> expr, string toParse, int position, int positionExpected, string errorMessage)
         {
             var config = new Env(toParse);
             var result = expr(config, position);
 
+            Assert.AreEqual(positionExpected, result.Position);
             Assert.AreEqual(errorMessage, result.ErrorMessage);
         }
 
@@ -94,7 +97,7 @@ namespace Morilib
                                             select b);
 
             Match(expr1, "000765", 3, 6, "765");
-            NoMatch(expr1, "000961", 3, "Does not match 765");
+            NoMatch(expr1, "000961", 3, 3, "Does not match 765");
             Match(expr1, "000   765", " +", 3, 9, "765");
             Match(expr1, "000#|aaa#|aaa|#aaa|#765", skip2, 3, 23, "765");
         }
@@ -105,9 +108,9 @@ namespace Morilib
             var expr1 = Key("765");
 
             Match(expr1, "000765", " +", "[\\);]", 3, 6, "765");
-            NoMatch(expr1, "000961", " +", "[\\);]", 3, "Does not match keyword 765");
+            NoMatch(expr1, "000961", " +", "[\\);]", 3, 3, "Does not match keyword 765");
             Match(expr1, "000   765  346", " +", "[\\);]", 3, 9, "765");
-            NoMatch(expr1, "000   765pro", " +", "[\\);]", 3, "Does not match keyword 765");
+            NoMatch(expr1, "000   765pro", " +", "[\\);]", 3, 9, "Does not match keyword 765");
             Match(expr1, "000   765; 346", " +", "[\\);]", 3, 9, "765");
             Match(expr1, "000   765) 346", " +", "[\\);]", 3, 9, "765");
         }
@@ -120,7 +123,7 @@ namespace Morilib
             Match(expr1, "000Abc", 3, 6, "Abc");
             Match(expr1, "000ABC", 3, 6, "ABC");
             Match(expr1, "000abc", 3, 6, "abc");
-            NoMatch(expr1, "000961", 3, "Does not match Abc");
+            NoMatch(expr1, "000961", 3, 3, "Does not match Abc");
             Match(expr1, "000   aBC", " +", 3, 9, "aBC");
         }
 
@@ -131,9 +134,9 @@ namespace Morilib
 
             Match(expr1, "000Abc", " +", "[\\);]", 3, 6, "Abc");
             Match(expr1, "000ABC", " +", "[\\);]", 3, 6, "ABC");
-            NoMatch(expr1, "000961", " +", "[\\);]", 3, "Does not match keyword Abc");
+            NoMatch(expr1, "000961", " +", "[\\);]", 3, 3, "Does not match keyword Abc");
             Match(expr1, "000   ABC  346", " +", "[\\);]", 3, 9, "ABC");
-            NoMatch(expr1, "000   ABCpro", " +", "[\\);]", 3, "Does not match keyword Abc");
+            NoMatch(expr1, "000   ABCpro", " +", "[\\);]", 3, 9, "Does not match keyword Abc");
             Match(expr1, "000   ABC; 346", " +", "[\\);]", 3, 9, "ABC");
             Match(expr1, "000   ABC) 346", " +", "[\\);]", 3, 9, "ABC");
         }
@@ -145,7 +148,7 @@ namespace Morilib
 
             Match(expr1, "000765", 3, 6, "765");
             Match(expr1, "0008765", 3, 7, "8765");
-            NoMatch(expr1, "000961", 3, "Does not match pattern 8?765");
+            NoMatch(expr1, "000961", 3, 3, "Does not match pattern 8?765");
             Match(expr1, "000   765", " +", 3, 9, "765");
         }
 
@@ -155,7 +158,7 @@ namespace Morilib
             var expr1 = End();
 
             Match(expr1, "000", 3, 3, 0);
-            NoMatch(expr1, "000961", 3, "Not reached to end of parsing");
+            NoMatch(expr1, "000961", 3, 3, "Not reached to end of parsing");
             Match(expr1, "000   ", " +", 3, 6, 0);
         }
 
@@ -177,7 +180,7 @@ namespace Morilib
             Match(expr1, @"""\x4a\x4A""", 0, 10, "JJ");
             Match(expr1, @"""\x305f\x305F""", 0, 14, "\x305f\x305F");
             Match(expr1, "\"This is \\na string\\n.\"", 0, 23, "This is \na string\n.");
-            NoMatch(expr1, "666", 0, "Does not match a string literal");
+            NoMatch(expr1, "666", 0, 0, "Does not match a string literal");
         }
 
         [TestMethod]
@@ -186,7 +189,7 @@ namespace Morilib
             var expr1 = Str("765").Select(x => int.Parse(x));
 
             Match(expr1, "000765", 3, 6, 765);
-            NoMatch(expr1, "000961", 3, "Does not match 765");
+            NoMatch(expr1, "000961", 3, 3, "Does not match 765");
         }
 
         [TestMethod]
@@ -198,8 +201,8 @@ namespace Morilib
 
             Match(expr1, "766", 0, 3, 767);
             Match(expr2, "766", 0, 3, 767);
-            NoMatch(expr1, "961", 0, "Does not match 766");
-            NoMatch(expr2, "961", 0, "Does not match 766");
+            NoMatch(expr1, "961", 0, 0, "Does not match 766");
+            NoMatch(expr2, "961", 0, 0, "Does not match 766");
         }
 
         [TestMethod]
@@ -210,8 +213,8 @@ namespace Morilib
 
             Match(expr1, "765", 0, 3, 766);
             Match(expr2, "765", 0, 3, 766);
-            NoMatch(expr1, "961", 0, "Does not match 765");
-            NoMatch(expr2, "961", 0, "Does not match 765");
+            NoMatch(expr1, "961", 0, 0, "Does not match 765");
+            NoMatch(expr2, "961", 0, 0, "Does not match 765");
         }
 
         [TestMethod]
@@ -224,14 +227,14 @@ namespace Morilib
 
             Match(expr1, "766767", 0, 6, 765);
             Match(expr2, "766767", 0, 6, 765);
-            NoMatch(expr1, "961767", 0, "Does not match 766");
-            NoMatch(expr2, "961767", 0, "Does not match 766");
-            NoMatch(expr1, "766961", 0, "Does not match 767");
-            NoMatch(expr2, "766961", 0, "Does not match 767");
+            NoMatch(expr1, "961767", 0, 0, "Does not match 766");
+            NoMatch(expr2, "961767", 0, 0, "Does not match 766");
+            NoMatch(expr1, "766961", 0, 3, "Does not match 767");
+            NoMatch(expr2, "766961", 0, 3, "Does not match 767");
         }
 
         [TestMethod]
-        public void SelectMany2Test()
+        public void SelectMany1Test()
         {
             var expr1 = from x in Str("7")
                         from y in Str("6")
@@ -240,6 +243,8 @@ namespace Morilib
 
             Match(expr1, "765", 0, 3, "765");
             Match(expr1, "7  6  5", " +", 0, 7, "765");
+            NoMatch(expr1, "7  5  5", " +", 0, 1, "Does not match 6");
+            NoMatch(expr1, "7  6  6", " +", 0, 4, "Does not match 5");
         }
 
         [TestMethod]
@@ -251,7 +256,7 @@ namespace Morilib
 
             Match(expr1, "7", 0, 1, 7);
             Match(expr1, "765", 0, 3, 18);
-            NoMatch(expr1, "", 0, "Does not match pattern [0-9]");
+            NoMatch(expr1, "", 0, 0, "Does not match pattern [0-9]");
         }
 
         [TestMethod]
@@ -284,7 +289,7 @@ namespace Morilib
                         select b;
 
             Match(expr1, "765", 0, 3, "765");
-            NoMatch(expr1, "961", 0, "Does not match 765");
+            NoMatch(expr1, "961", 0, 0, "Does not match 765");
         }
 
         [TestMethod]
@@ -295,7 +300,7 @@ namespace Morilib
                         select b;
 
             Match(expr1, "765", 0, 3, "765");
-            NoMatch(expr1, "961", 0, "Unexpected match");
+            NoMatch(expr1, "961", 0, 0, "Unexpected match");
         }
 
         [TestMethod]
@@ -304,8 +309,8 @@ namespace Morilib
             var expr1 = Regex("[0-9]+").MatchIf(x => x == "765");
 
             Match(expr1, "765", 0, 3, "765");
-            NoMatch(expr1, "666", 0, "Value is not matched");
-            NoMatch(expr1, "aaa", 0, "Does not match pattern [0-9]+");
+            NoMatch(expr1, "666", 0, 0, "Value is not matched");
+            NoMatch(expr1, "aaa", 0, 0, "Does not match pattern [0-9]+");
         }
 
         [TestMethod]
@@ -317,7 +322,7 @@ namespace Morilib
                                              select a + b + c).SelectError(t => "Unbalanced parenthesis"));
 
             Match(expr1, "((()))", 0, 6, "((()))");
-            NoMatch(expr1, "((())", 0, "Unbalanced parenthesis");
+            NoMatch(expr1, "((())", 0, 5, "Unbalanced parenthesis");
         }
 
         [TestMethod]
@@ -333,7 +338,7 @@ namespace Morilib
                                                          select a + b + c);
 
             Match(expr1, "([([()])])", 0, 10, "([([()])])");
-            NoMatch(expr1, "([([()])]", 0, "Does not match )");
+            NoMatch(expr1, "([([()])]", 0, 9, "Does not match )");
         }
 
         private static dynamic Cons(dynamic car, dynamic cdr)
@@ -435,7 +440,7 @@ namespace Morilib
                         select y;
 
             Match(expr1, "abc    d", " +", 0, 8, "c");
-            NoMatch(expr1, "ab c    d", 0, "Does not match c");
+            NoMatch(expr1, "ab c    d", 0, 2, "Does not match c");
         }
 
         [TestMethod]
