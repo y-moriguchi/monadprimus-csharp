@@ -183,36 +183,50 @@ namespace Morilib
         /// <summary>
         /// creates a parser of string literal.
         /// </summary>
+        /// <param name="quoteChar">quote character of string literal</param>
+        /// <param name="includeNewline">true if newline is included in string literal</param>
         /// <param name="escapeFunc">function to get escape character to actual character</param>
         /// <param name="charUnicode">character of representing unicode code point</param>
         /// <param name="errorMessage">error message</param>
         /// <returns>parser of matching a string literal</returns>
-        public static Parser<string> StringLiteral(Func<char, string> escapeFunc, string charUnicode, string errorMessage)
+        public static Parser<string> StringLiteral(char quoteChar,
+            bool includeNewline,
+            Func<char, string> escapeFunc,
+            string charUnicode,
+            string errorMessage)
         {
+            string quoteStr = new StringBuilder().Append(quoteChar).ToString();
+            string newlineStr = includeNewline ? "" : "\n";
+
             var letter = Regex(@"\\.").Select(x => escapeFunc(x[1])).MatchIf(x => x != null)
                          .Choice(Regex(@"\\" + charUnicode + @"[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]").Select(
                              x => CodeToString(Convert.ToInt32(x.Substring(2), 16))))
                          .Choice(Regex(@"\\x[0-9A-Fa-f][0-9A-Fa-f]").Select(
                              x => CodeToString(Convert.ToInt32(x.Substring(2), 16))))
                          .Choice(Regex(@"\\.").Select(x => x.Substring(1)))
-                         .Choice(Regex("[^\\\\\\\"]+"));
+                         .Choice(Regex("[^\\\\" + quoteStr + newlineStr + "]+"));
             var letters = letter.ZeroOrMore((x, y) => x + y, "");
 
-            return (from a in Str("\"")
+            return (from a in Str(quoteStr)
                     from x in letters
-                    from c in Str("\"")
+                    from c in Str(quoteStr)
                     select x).SelectError(x => errorMessage);
         }
 
         /// <summary>
         /// creates a parser of string literal.
         /// </summary>
+        /// <param name="quoteChar">quote character of string literal</param>
+        /// <param name="includeNewline">true if newline is included in string literal</param>
         /// <param name="escapeFunc">function to get escape character to actual character</param>
         /// <param name="charUnicode">character of representing unicode code point</param>
         /// <returns>parser of matching a string literal</returns>
-        public static Parser<string> StringLiteral(Func<char, string> escapeFunc, string charUnicode)
+        public static Parser<string> StringLiteral(char quoteChar,
+            bool includeNewline,
+            Func<char, string> escapeFunc,
+            string charUnicode)
         {
-            return StringLiteral(escapeFunc, charUnicode, "Does not match a string literal");
+            return StringLiteral(quoteChar, includeNewline, escapeFunc, charUnicode, "Does not match a string literal");
         }
 
         /// <summary>
@@ -223,7 +237,7 @@ namespace Morilib
         /// <returns>parser of matching a string literal</returns>
         public static Parser<string> StringLiteral(string errorMessage)
         {
-            return StringLiteral(DefaultEscapeCharacterFunction, "x", errorMessage);
+            return StringLiteral('\"', false, DefaultEscapeCharacterFunction, "x", errorMessage);
         }
 
         /// <summary>
