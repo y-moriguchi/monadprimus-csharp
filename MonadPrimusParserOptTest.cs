@@ -116,6 +116,86 @@ namespace Morilib
         }
 
         [TestMethod]
+        public void NumberLiteral1Test()
+        {
+            var expr = NumberLiteral(NumberLiteralFlags.Binary | NumberLiteralFlags.Octal);
+
+            Match(expr, "0", 0, 1, 0);
+            Match(expr, "377", 0, 3, 377);
+            Match(expr, "0377", 0, 4, 255);
+            Match(expr, "08", 0, 2, 8);
+            Match(expr, "0x765", 0, 5, 0x765);
+            Match(expr, "0b1111", 0, 6, 0b1111);
+            Match(expr, "-0", 0, 2, 0);
+            Match(expr, "-377", 0, 4, -377);
+            Match(expr, "-0377", 0, 5, -255);
+            Match(expr, "-08", 0, 3, -8);
+            Match(expr, "-0x765", 0, 6, -0x765);
+            Match(expr, "-0b1111", 0, 7, -0b1111);
+            NoMatch(expr, "-", 0, 0, "Does not match number literal");
+        }
+
+        [TestMethod]
+        public void NumberLiteral2Test()
+        {
+            var expr = NumberLiteral(NumberLiteralFlags.Binary);
+
+            Match(expr, "0", 0, 1, 0);
+            Match(expr, "377", 0, 3, 377);
+            Match(expr, "0377", 0, 4, 377);
+            Match(expr, "08", 0, 2, 8);
+            Match(expr, "0x765", 0, 5, 0x765);
+            Match(expr, "0b1111", 0, 6, 0b1111);
+            Match(expr, "-0", 0, 2, 0);
+            Match(expr, "-377", 0, 4, -377);
+            Match(expr, "-0377", 0, 5, -377);
+            Match(expr, "-08", 0, 3, -8);
+            Match(expr, "-0x765", 0, 6, -0x765);
+            Match(expr, "-0b1111", 0, 7, -0b1111);
+            NoMatch(expr, "-", 0, 0, "Does not match number literal");
+        }
+
+        [TestMethod]
+        public void NumberLiteral3Test()
+        {
+            var expr = NumberLiteral(NumberLiteralFlags.Octal);
+
+            Match(expr, "0", 0, 1, 0);
+            Match(expr, "377", 0, 3, 377);
+            Match(expr, "0377", 0, 4, 255);
+            Match(expr, "08", 0, 2, 8);
+            Match(expr, "0x765", 0, 5, 0x765);
+            Match(expr, "0b1111", 0, 1, 0);
+            Match(expr, "-0", 0, 2, 0);
+            Match(expr, "-377", 0, 4, -377);
+            Match(expr, "-0377", 0, 5, -255);
+            Match(expr, "-08", 0, 3, -8);
+            Match(expr, "-0x765", 0, 6, -0x765);
+            Match(expr, "-0b1111", 0, 2, 0);
+            NoMatch(expr, "-", 0, 0, "Does not match number literal");
+        }
+
+        [TestMethod]
+        public void NumberLiteral4Test()
+        {
+            var expr = NumberLiteral(NumberLiteralFlags.None);
+
+            Match(expr, "0", 0, 1, 0);
+            Match(expr, "377", 0, 3, 377);
+            Match(expr, "0377", 0, 4, 377);
+            Match(expr, "08", 0, 2, 8);
+            Match(expr, "0x765", 0, 5, 0x765);
+            Match(expr, "0b1111", 0, 1, 0);
+            Match(expr, "-0", 0, 2, 0);
+            Match(expr, "-377", 0, 4, -377);
+            Match(expr, "-0377", 0, 5, -377);
+            Match(expr, "-08", 0, 3, -8);
+            Match(expr, "-0x765", 0, 6, -0x765);
+            Match(expr, "-0b1111", 0, 2, 0);
+            NoMatch(expr, "-", 0, 0, "Does not match number literal");
+        }
+
+        [TestMethod]
         public void StringLiteralTest()
         {
             var expr1 = StringLiteral();

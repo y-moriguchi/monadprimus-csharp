@@ -77,9 +77,79 @@ namespace Morilib
             "\xfe70-\xfe74\xfe76-\xfefc\xfeff\xff04\xff10-\xff19\xff21-\xff3a\xff3f\xff41-\xff5a\xff66-\xffbe\xffc2-\xffc7\xffca-\xffcf\xffd2-\xffd7\xffda-\xffdc" +
             "\xffe0-\xffe1\xffe5-\xffe6\xfff9-\xfffb]*";
 
+        /// <summary>
+        /// create a parser matches Java identifier.
+        /// </summary>
+        /// <returns>parser</returns>
         public static Parser<string> JavaIdentifier()
         {
             return Regex(JavaIdentifierRegex).SelectError(x => "Does not match identifier");
+        }
+
+        [Flags]
+        public enum NumberLiteralFlags
+        {
+            None = 0,
+            Binary = 1,
+            Octal = 2
+        }
+
+        /// <summary>
+        /// create a parser matches number literal.
+        /// </summary>
+        /// <param name="flags">flags of digits</param>
+        /// <returns>parser</returns>
+        public static Parser<long> NumberLiteral(NumberLiteralFlags flags)
+        {
+            var octal = from _1 in Str("0")
+                        from a in Regex("[0-7]+").Select(x => Convert.ToInt64(x, 8))
+                        select a;
+            var hexadecimal = from _1 in Str("0x")
+                              from a in Regex("[0-9a-fA-F]+").Select(x => Convert.ToInt64(x, 16))
+                              select a;
+            var binary = from _1 in Str("0b")
+                         from a in Regex("[01]+").Select(x => Convert.ToInt64(x, 2))
+                         select a;
+
+            Parser<long> literal;
+            switch(flags)
+            {
+                case NumberLiteralFlags.Binary | NumberLiteralFlags.Octal:
+                    literal = hexadecimal
+                        .Choice(binary)
+                        .Choice(octal)
+                        .Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
+                    break;
+                case NumberLiteralFlags.Binary:
+                    literal = hexadecimal
+                        .Choice(binary)
+                        .Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
+                    break;
+                case NumberLiteralFlags.Octal:
+                    literal = hexadecimal
+                        .Choice(octal)
+                        .Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
+                    break;
+                default:
+                    literal = hexadecimal
+                        .Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
+                    break;
+            }
+
+            return from pos in GetPosition()
+                   from a in Str("-").Option("")
+                   from b in literal.SelectError(x => "Does not match number literal", x => pos)
+                   select a == "-" ? -b : b;
+        }
+
+        /// <summary>
+        /// create a parser matches number literal.
+        /// </summary>
+        /// <param name="flags">flags of digits</param>
+        /// <returns>parser</returns>
+        public static Parser<long> NumberLiteral()
+        {
+            return NumberLiteral(NumberLiteralFlags.Binary | NumberLiteralFlags.Octal);
         }
 
         private static string FromChar(char x)
