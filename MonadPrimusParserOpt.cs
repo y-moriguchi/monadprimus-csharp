@@ -125,29 +125,14 @@ namespace Morilib
                          from a in Regex("[01]+").Select(x => Convert.ToInt64(x, 2))
                          select a;
 
-            Parser<long> literal;
-            switch (flags)
+            var literal = hexadecimal.Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
+            if((flags & NumberLiteralFlags.Binary) == NumberLiteralFlags.Binary)
             {
-                case NumberLiteralFlags.Binary | NumberLiteralFlags.Octal:
-                    literal = hexadecimal
-                        .Choice(binary)
-                        .Choice(octal)
-                        .Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
-                    break;
-                case NumberLiteralFlags.Binary:
-                    literal = hexadecimal
-                        .Choice(binary)
-                        .Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
-                    break;
-                case NumberLiteralFlags.Octal:
-                    literal = hexadecimal
-                        .Choice(octal)
-                        .Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
-                    break;
-                default:
-                    literal = hexadecimal
-                        .Choice(Regex("[0-9]+").Select(x => long.Parse(x)));
-                    break;
+                literal = binary.Choice(literal);
+            }
+            if((flags & NumberLiteralFlags.Octal) == NumberLiteralFlags.Octal)
+            {
+                literal = octal.Choice(literal);
             }
 
             return from pos in GetPosition()
