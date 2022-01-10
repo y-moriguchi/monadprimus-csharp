@@ -533,15 +533,6 @@ namespace Morilib
         }
 
         /// <summary>
-        /// creates a parser of string literal.
-        /// </summary>
-        /// <returns>parser of matching a string literal</returns>
-        public static Parser<string> StringLiteral()
-        {
-            return StringLiteral("Does not match a string literal");
-        }
-
-        /// <summary>
         /// The monadic unit function of Parser.
         /// </summary>
         /// <typeparam name="T">type</typeparam>

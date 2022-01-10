@@ -198,13 +198,14 @@ namespace Morilib
         [TestMethod]
         public void StringLiteralTest()
         {
-            var expr1 = StringLiteral();
+            var expr1 = StringLiteral(DefaultEscapeCharacterFunction, "u");
 
             Match(expr1, @"""\a\b\f\n\r\t\v""", 0, 16, "\a\b\f\n\r\t\v");
             Match(expr1, "\"\\\"\\\\\\\"\"", 0, 8, "\"\\\"");
             Match(expr1, @"""\x4a\x4A""", 0, 10, "JJ");
-            Match(expr1, @"""\x305f\x305F""", 0, 14, "\x305f\x305F");
+            Match(expr1, @"""\u305f\u305F""", 0, 14, "\x305f\x305F");
             Match(expr1, "\"This is \\na string\\n.\"", 0, 23, "This is \na string\n.");
+            Match(expr1, @"""\x305f\x305F""", 0, 14, "05f05F");
             NoMatch(expr1, "666", 0, 0, "Does not match a string literal");
         }
     }

@@ -112,7 +112,7 @@ namespace Morilib
                          select a;
 
             Parser<long> literal;
-            switch(flags)
+            switch (flags)
             {
                 case NumberLiteralFlags.Binary | NumberLiteralFlags.Octal:
                     literal = hexadecimal
@@ -152,7 +152,12 @@ namespace Morilib
             return NumberLiteral(NumberLiteralFlags.Binary | NumberLiteralFlags.Octal);
         }
 
-        private static string FromChar(char x)
+        /// <summary>
+        /// Default escape character function.
+        /// </summary>
+        /// <param name="x">escape character</param>
+        /// <returns></returns>
+        public static string DefaultEscapeCharacterFunction(char x)
         {
             switch (x)
             {
@@ -163,7 +168,7 @@ namespace Morilib
                 case 'r': return "\r";
                 case 't': return "\t";
                 case 'v': return "\v";
-                default: throw new Exception("illegal sequence");
+                default: return null;
             }
         }
 
@@ -178,12 +183,14 @@ namespace Morilib
         /// <summary>
         /// creates a parser of string literal.
         /// </summary>
+        /// <param name="escapeFunc">function to get escape character to actual character</param>
+        /// <param name="charUnicode">character of representing unicode code point</param>
         /// <param name="errorMessage">error message</param>
         /// <returns>parser of matching a string literal</returns>
-        public static Parser<string> StringLiteral(string errorMessage)
+        public static Parser<string> StringLiteral(Func<char, string> escapeFunc, string charUnicode, string errorMessage)
         {
-            var letter = Regex(@"\\[abfnrtv]").Select(x => FromChar(x[1]))
-                         .Choice(Regex(@"\\x[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]").Select(
+            var letter = Regex(@"\\.").Select(x => escapeFunc(x[1])).MatchIf(x => x != null)
+                         .Choice(Regex(@"\\" + charUnicode + @"[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]").Select(
                              x => CodeToString(Convert.ToInt32(x.Substring(2), 16))))
                          .Choice(Regex(@"\\x[0-9A-Fa-f][0-9A-Fa-f]").Select(
                              x => CodeToString(Convert.ToInt32(x.Substring(2), 16))))
@@ -195,6 +202,38 @@ namespace Morilib
                     from x in letters
                     from c in Str("\"")
                     select x).SelectError(x => errorMessage);
+        }
+
+        /// <summary>
+        /// creates a parser of string literal.
+        /// </summary>
+        /// <param name="escapeFunc">function to get escape character to actual character</param>
+        /// <param name="charUnicode">character of representing unicode code point</param>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> StringLiteral(Func<char, string> escapeFunc, string charUnicode)
+        {
+            return StringLiteral(escapeFunc, charUnicode, "Does not match a string literal");
+        }
+
+        /// <summary>
+        /// creates a parser of string literal.
+        /// Specification of string literal of C# is applied.
+        /// </summary>
+        /// <param name="errorMessage">error message</param>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> StringLiteral(string errorMessage)
+        {
+            return StringLiteral(DefaultEscapeCharacterFunction, "x", errorMessage);
+        }
+
+        /// <summary>
+        /// creates a parser of string literal.
+        /// Specification of string literal of C# is applied.
+        /// </summary>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> StringLiteral()
+        {
+            return StringLiteral("Does not match a string literal");
         }
     }
 }
