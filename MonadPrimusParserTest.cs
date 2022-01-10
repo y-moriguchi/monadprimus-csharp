@@ -171,25 +171,21 @@ namespace Morilib
         }
 
         [TestMethod]
-        public void StringLiteralTest()
-        {
-            var expr1 = StringLiteral();
-
-            Match(expr1, @"""\a\b\f\n\r\t\v""", 0, 16, "\a\b\f\n\r\t\v");
-            Match(expr1, "\"\\\"\\\\\\\"\"", 0, 8, "\"\\\"");
-            Match(expr1, @"""\x4a\x4A""", 0, 10, "JJ");
-            Match(expr1, @"""\x305f\x305F""", 0, 14, "\x305f\x305F");
-            Match(expr1, "\"This is \\na string\\n.\"", 0, 23, "This is \na string\n.");
-            NoMatch(expr1, "666", 0, 0, "Does not match a string literal");
-        }
-
-        [TestMethod]
         public void SelectTest()
         {
             var expr1 = Str("765").Select(x => int.Parse(x));
 
             Match(expr1, "000765", 3, 6, 765);
             NoMatch(expr1, "000961", 3, 3, "Does not match 765");
+        }
+
+        [TestMethod]
+        public void SelectErrorTest()
+        {
+            var expr1 = Str("765").SelectError(x => "not match", x => 0);
+
+            Match(expr1, "000765", 3, 6, "765");
+            NoMatch(expr1, "000961", 3, 0, "not match");
         }
 
         [TestMethod]

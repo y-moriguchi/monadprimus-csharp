@@ -625,6 +625,45 @@ namespace Morilib
         }
 
         /// <summary>
+        /// maps error message and position.
+        /// </summary>
+        /// <typeparam name="T">type</typeparam>
+        /// <param name="parser">parser</param>
+        /// <param name="f">mapping function of error message</param>
+        /// <param name="fpos">mapping function of error position</param>
+        /// <returns>parser with changed error message</returns>
+        public static Parser<T> SelectError<T>(this Parser<T> parser, Func<string, string> f, Func<int, int> fpos)
+        {
+            CheckNull(parser, nameof(parser));
+            CheckNull(f, nameof(f));
+            CheckNull(fpos, nameof(fpos));
+            return (env, position) =>
+            {
+                var result = parser(env, position);
+
+                if (result.IsError)
+                {
+                    var message = f(result.ErrorMessage);
+                    var pos = fpos(result.Position);
+
+                    if (message == null)
+                    {
+                        throw new InvalidOperationException("message cannot be null");
+                    }
+                    if (pos < 0)
+                    {
+                        throw new IndexOutOfRangeException("position must be non-negative");
+                    }
+                    return new Result<T>(message, pos);
+                }
+                else
+                {
+                    return result;
+                }
+            };
+        }
+
+        /// <summary>
         /// maps error message.
         /// </summary>
         /// <typeparam name="T">type</typeparam>
@@ -633,27 +672,7 @@ namespace Morilib
         /// <returns>parser with changed error message</returns>
         public static Parser<T> SelectError<T>(this Parser<T> parser, Func<string, string> f)
         {
-            CheckNull(parser, nameof(parser));
-            CheckNull(f, nameof(f));
-            return (env, position) =>
-            {
-                var result = parser(env, position);
-
-                if (result.IsError)
-                {
-                    var message = f(result.ErrorMessage);
-                    
-                    if(message == null)
-                    {
-                        throw new InvalidOperationException("message cannot be null");
-                    }
-                    return new Result<T>(message, result.Position);
-                }
-                else
-                {
-                    return result;
-                }
-            };
+            return parser.SelectError(f, x => x);
         }
 
         /// <summary>
