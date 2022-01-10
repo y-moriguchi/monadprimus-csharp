@@ -86,11 +86,25 @@ namespace Morilib
             return Regex(JavaIdentifierRegex).SelectError(x => "Does not match identifier");
         }
 
+        /// <summary>
+        /// Flags of number literal.
+        /// </summary>
         [Flags]
         public enum NumberLiteralFlags
         {
+            /// <summary>
+            /// not use binary and octal.
+            /// </summary>
             None = 0,
+
+            /// <summary>
+            /// use binary.
+            /// </summary>
             Binary = 1,
+
+            /// <summary>
+            /// use octal.
+            /// </summary>
             Octal = 2
         }
 
@@ -153,14 +167,15 @@ namespace Morilib
         }
 
         /// <summary>
-        /// Default escape character function.
+        /// Default escape character function of C#.
         /// </summary>
         /// <param name="x">escape character</param>
         /// <returns></returns>
-        public static string DefaultEscapeCharacterFunction(char x)
+        public static string CSharpEscapeChar(char x)
         {
             switch (x)
             {
+                case '0': return "\0";
                 case 'a': return "\a";
                 case 'b': return "\b";
                 case 'f': return "\f";
@@ -168,7 +183,107 @@ namespace Morilib
                 case 'r': return "\r";
                 case 't': return "\t";
                 case 'v': return "\v";
+                case '\'': return "\'";
+                case '\"': return "\"";
+                case '\\': return "\\";
                 default: return null;
+            }
+        }
+
+        /// <summary>
+        /// Default escape character function of C.
+        /// </summary>
+        /// <param name="x">escape character</param>
+        /// <returns></returns>
+        public static string CEscapeChar(char x)
+        {
+            switch (x)
+            {
+                case '0': return "\0";
+                case 'a': return "\a";
+                case 'b': return "\b";
+                case 'f': return "\f";
+                case 'n': return "\n";
+                case 'r': return "\r";
+                case 't': return "\t";
+                case 'v': return "\v";
+                case '\'': return "\'";
+                case '\"': return "\"";
+                case '\\': return "\\";
+                case '?': return "?";
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// Default escape character function of JavaScript.
+        /// </summary>
+        /// <param name="x">escape character</param>
+        /// <returns></returns>
+        public static string JSEscapeChar(char x)
+        {
+            switch (x)
+            {
+                case '0': return "\0";
+                case 'b': return "\b";
+                case 'f': return "\f";
+                case 'n': return "\n";
+                case 'r': return "\r";
+                case 't': return "\t";
+                case 'v': return "\v";
+                case '\'': return "\'";
+                case '\"': return "\"";
+                case '\\': return "\\";
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// Default escape character function of Java.
+        /// </summary>
+        /// <param name="x">escape character</param>
+        /// <returns></returns>
+        public static string JavaEscapeChar(char x)
+        {
+            switch (x)
+            {
+                case 'b': return "\b";
+                case 't': return "\t";
+                case 'n': return "\n";
+                case 'r': return "\r";
+                case 'f': return "\f";
+                case '\'': return "\'";
+                case '\"': return "\"";
+                case '\\': return "\\";
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// Flags of string literal.
+        /// </summary>
+        [Flags]
+        public enum StringLiteralFlags
+        {
+            None = 0,
+            IncludeNewline = 1,
+            Octal = 2,
+            Hexadecimal = 4,
+            Unicode = 8,
+            Unicodex = 16,
+            JSStyleCodePoint = 32,
+            CSharpStyleCodePoint = 64
+        }
+
+        private static int HexToInt(string x)
+        {
+            try
+            {
+                return Convert.ToInt32(x, 16);
+            }
+            catch(OverflowException)
+            {
+                return -1;
             }
         }
 
@@ -180,31 +295,59 @@ namespace Morilib
             return builder.ToString();
         }
 
+        private static string CodePointToString(int x)
+        {
+            return (x < 0 || x > 0x10ffff) ? null : char.ConvertFromUtf32(x);
+        }
+
         /// <summary>
         /// creates a parser of string literal.
         /// </summary>
         /// <param name="quoteChar">quote character of string literal</param>
-        /// <param name="includeNewline">true if newline is included in string literal</param>
         /// <param name="escapeFunc">function to get escape character to actual character</param>
-        /// <param name="charUnicode">character of representing unicode code point</param>
+        /// <param name="flags">flags of parsing string literal</param>
         /// <param name="errorMessage">error message</param>
         /// <returns>parser of matching a string literal</returns>
         public static Parser<string> StringLiteral(char quoteChar,
-            bool includeNewline,
             Func<char, string> escapeFunc,
-            string charUnicode,
+            StringLiteralFlags flags,
             string errorMessage)
         {
             string quoteStr = new StringBuilder().Append(quoteChar).ToString();
-            string newlineStr = includeNewline ? "" : "\n";
+            string newlineStr = ((flags & StringLiteralFlags.IncludeNewline) == StringLiteralFlags.IncludeNewline) ? "" : "\n";
 
-            var letter = Regex(@"\\.").Select(x => escapeFunc(x[1])).MatchIf(x => x != null)
-                         .Choice(Regex(@"\\" + charUnicode + @"[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]").Select(
-                             x => CodeToString(Convert.ToInt32(x.Substring(2), 16))))
-                         .Choice(Regex(@"\\x[0-9A-Fa-f][0-9A-Fa-f]").Select(
-                             x => CodeToString(Convert.ToInt32(x.Substring(2), 16))))
-                         .Choice(Regex(@"\\.").Select(x => x.Substring(1)))
-                         .Choice(Regex("[^\\\\" + quoteStr + newlineStr + "]+"));
+            var letter = Regex("[^\\\\" + quoteStr + newlineStr + "]+");
+            if((flags & StringLiteralFlags.Octal) == StringLiteralFlags.Octal)
+            {
+                letter = Regex(@"\\[0-3][0-7][0-7]").Select(x => CodeToString(Convert.ToInt32(x.Substring(1), 8))).Choice(letter);
+            }
+            if ((flags & StringLiteralFlags.Unicodex) == StringLiteralFlags.Unicodex)
+            {
+                letter = Regex(@"\\x[0-9A-Fa-f]{1,4}").Select(x => CodeToString(Convert.ToInt32(x.Substring(2), 16))).Choice(letter);
+            }
+            if ((flags & StringLiteralFlags.Hexadecimal) == StringLiteralFlags.Hexadecimal)
+            {
+                letter = Regex(@"\\x[0-9A-Fa-f][0-9A-Fa-f]").Select(x => CodeToString(Convert.ToInt32(x.Substring(2), 16))).Choice(letter);
+            }
+            if ((flags & StringLiteralFlags.Unicode) == StringLiteralFlags.Unicode)
+            {
+                letter = Regex(@"\\u[0-9A-Fa-f]{4,4}").Select(x => CodeToString(Convert.ToInt32(x.Substring(2), 16))).Choice(letter);
+            }
+            if ((flags & StringLiteralFlags.JSStyleCodePoint) == StringLiteralFlags.JSStyleCodePoint)
+            {
+                var code = from _1 in Str("\\u{")
+                           from a in Regex("[0-9A-Fa-f]+")
+                           from _2 in Str("}")
+                           select a;
+                letter = code.Select(x => CodePointToString(HexToInt(x))).MatchIf(x => x != null).Choice(letter);
+            }
+            if((flags & StringLiteralFlags.CSharpStyleCodePoint) == StringLiteralFlags.CSharpStyleCodePoint)
+            {
+                letter = Regex(@"\\U[0-9A-Fa-f]{8,8}").Select(x => CodePointToString(HexToInt(x.Substring(2)))).MatchIf(x => x != null)
+                    .Choice(letter);
+            }
+            letter = Regex(@"\\.").Select(x => escapeFunc(x[1])).MatchIf(x => x != null).Choice(letter);
+
             var letters = letter.ZeroOrMore((x, y) => x + y, "");
 
             return (from a in Str(quoteStr)
@@ -217,37 +360,102 @@ namespace Morilib
         /// creates a parser of string literal.
         /// </summary>
         /// <param name="quoteChar">quote character of string literal</param>
-        /// <param name="includeNewline">true if newline is included in string literal</param>
         /// <param name="escapeFunc">function to get escape character to actual character</param>
-        /// <param name="charUnicode">character of representing unicode code point</param>
+        /// <param name="flags">flags of parsing string literal</param>
         /// <returns>parser of matching a string literal</returns>
         public static Parser<string> StringLiteral(char quoteChar,
-            bool includeNewline,
             Func<char, string> escapeFunc,
-            string charUnicode)
+            StringLiteralFlags flags)
         {
-            return StringLiteral(quoteChar, includeNewline, escapeFunc, charUnicode, "Does not match a string literal");
+            return StringLiteral(quoteChar, escapeFunc, flags, "Does not match a string literal");
         }
 
         /// <summary>
-        /// creates a parser of string literal.
-        /// Specification of string literal of C# is applied.
+        /// creates a parser of JavaScript string literal.
         /// </summary>
         /// <param name="errorMessage">error message</param>
         /// <returns>parser of matching a string literal</returns>
-        public static Parser<string> StringLiteral(string errorMessage)
+        public static Parser<string> JSStringLiteral(string errorMessage)
         {
-            return StringLiteral('\"', false, DefaultEscapeCharacterFunction, "x", errorMessage);
+            return StringLiteral('\"',
+                JSEscapeChar,
+                StringLiteralFlags.Octal | StringLiteralFlags.Hexadecimal | StringLiteralFlags.Unicode | StringLiteralFlags.JSStyleCodePoint,
+                errorMessage);
         }
 
         /// <summary>
-        /// creates a parser of string literal.
-        /// Specification of string literal of C# is applied.
+        /// creates a parser of JavaScript string literal.
         /// </summary>
         /// <returns>parser of matching a string literal</returns>
-        public static Parser<string> StringLiteral()
+        public static Parser<string> JSStringLiteral()
         {
-            return StringLiteral("Does not match a string literal");
+            return JSStringLiteral("Does not match a string literal");
+        }
+
+        /// <summary>
+        /// creates a parser of Java string literal.
+        /// </summary>
+        /// <param name="errorMessage">error message</param>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> JavaStringLiteral(string errorMessage)
+        {
+            return StringLiteral('\"',
+                JavaEscapeChar,
+                StringLiteralFlags.Octal | StringLiteralFlags.Unicode,
+                errorMessage);
+        }
+
+        /// <summary>
+        /// creates a parser of Java string literal.
+        /// </summary>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> JavaStringLiteral()
+        {
+            return JavaStringLiteral("Does not match a string literal");
+        }
+
+        /// <summary>
+        /// creates a parser of C string literal.
+        /// </summary>
+        /// <param name="errorMessage">error message</param>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> CStringLiteral(string errorMessage)
+        {
+            return StringLiteral('\"',
+                CEscapeChar,
+                StringLiteralFlags.Octal | StringLiteralFlags.Hexadecimal,
+                errorMessage);
+        }
+
+        /// <summary>
+        /// creates a parser of C string literal.
+        /// </summary>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> CStringLiteral()
+        {
+            return CStringLiteral("Does not match a string literal");
+        }
+
+        /// <summary>
+        /// creates a parser of C# string literal.
+        /// </summary>
+        /// <param name="errorMessage">error message</param>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> CSharpStringLiteral(string errorMessage)
+        {
+            return StringLiteral('\"',
+                CSharpEscapeChar,
+                StringLiteralFlags.Unicodex | StringLiteralFlags.Unicode | StringLiteralFlags.CSharpStyleCodePoint,
+                errorMessage);
+        }
+
+        /// <summary>
+        /// creates a parser of C# string literal.
+        /// </summary>
+        /// <returns>parser of matching a string literal</returns>
+        public static Parser<string> CSharpStringLiteral()
+        {
+            return CSharpStringLiteral("Does not match a string literal");
         }
     }
 }

@@ -196,32 +196,81 @@ namespace Morilib
         }
 
         [TestMethod]
-        public void StringLiteral1Test()
+        public void StringLiteralTest()
         {
-            var expr1 = StringLiteral('\'', true, DefaultEscapeCharacterFunction, "u");
+            var expr1 = StringLiteral('\'', CSharpEscapeChar, StringLiteralFlags.IncludeNewline);
 
-            Match(expr1, @"'\a\b\f\n\r\t\v'", 0, 16, "\a\b\f\n\r\t\v");
+            Match(expr1, @"'\0\a\b\f\n\r\t\v'", 0, 18, "\0\a\b\f\n\r\t\v");
             Match(expr1, "'\\\"\\\\\\\"'", 0, 8, "\"\\\"");
-            Match(expr1, @"'\x4a\x4A'", 0, 10, "JJ");
-            Match(expr1, @"'\u305f\u305F'", 0, 14, "\x305f\x305F");
             Match(expr1, "'This is \\na string\\n.'", 0, 23, "This is \na string\n.");
             Match(expr1, "'This is \na string\\n.'", 0, 22, "This is \na string\n.");
-            Match(expr1, @"'\x305f\x305F'", 0, 14, "05f05F");
             Match(expr1, "''", 0, 2, "");
             NoMatch(expr1, "666", 0, 0, "Does not match a string literal");
+            NoMatch(expr1, @"'\x4a\x4A'", 0, 1, "Does not match a string literal");
+            NoMatch(expr1, @"'\u305f\u305F'", 0, 1, "Does not match a string literal");
         }
 
         [TestMethod]
-        public void StringLiteral2Test()
+        public void StringLiteralCSharpTest()
         {
-            var expr1 = StringLiteral();
+            var expr1 = CSharpStringLiteral();
 
-            Match(expr1, @"""\a\b\f\n\r\t\v""", 0, 16, "\a\b\f\n\r\t\v");
+            Match(expr1, @"""\0\a\b\f\n\r\t\v\""\'\\""", 0, 24, "\0\a\b\f\n\r\t\v\"\'\\");
             Match(expr1, "\"\\\"\\\\\\\"\"", 0, 8, "\"\\\"");
             Match(expr1, @"""\x4a\x4A""", 0, 10, "JJ");
-            Match(expr1, @"""\x305f\x305F""", 0, 14, "\x305f\x305F");
+            Match(expr1, @"""\x04a\x004A""", 0, 13, "JJ");
+            Match(expr1, @"""\u305f\u305F""", 0, 14, "\u305f\u305F");
+            Match(expr1, @"""\U0001D161""", 0, 12, "\uD834\uDD61");
             Match(expr1, "\"This is \\na string\\n.\"", 0, 23, "This is \na string\n.");
-            Match(expr1, @"""\u305f\u305F""", 0, 14, "u305fu305F");
+            Match(expr1, "\"\"", 0, 2, "");
+            NoMatch(expr1, "666", 0, 0, "Does not match a string literal");
+            NoMatch(expr1, "\"This is \na string\\n.\"", 0, 9, "Does not match a string literal");
+            NoMatch(expr1, @"""\U00110000""", 0, 1, "Does not match a string literal");
+        }
+
+        [TestMethod]
+        public void StringLiteralJSTest()
+        {
+            var expr1 = JSStringLiteral();
+
+            Match(expr1, @"""\0\b\f\n\r\t\v\""\'\\""""", 0, 22, "\0\b\f\n\r\t\v\"\'\\");
+            Match(expr1, "\"\\\"\\\\\\\"\"", 0, 8, "\"\\\"");
+            Match(expr1, @"""\x4a\x4A""", 0, 10, "JJ");
+            Match(expr1, @"""\112\112""", 0, 10, "JJ");
+            Match(expr1, @"""\u305f\u305F""", 0, 14, "\u305f\u305F");
+            Match(expr1, @"""\u{1D161}""", 0, 11, "\uD834\uDD61");
+            Match(expr1, "\"This is \\na string\\n.\"", 0, 23, "This is \na string\n.");
+            Match(expr1, "\"\"", 0, 2, "");
+            NoMatch(expr1, "666", 0, 0, "Does not match a string literal");
+            NoMatch(expr1, "\"This is \na string\\n.\"", 0, 9, "Does not match a string literal");
+            NoMatch(expr1, @"""\u{110000}""", 0, 1, "Does not match a string literal");
+        }
+
+        [TestMethod]
+        public void StringLiteralCTest()
+        {
+            var expr1 = CStringLiteral();
+
+            Match(expr1, @"""\0\a\b\f\n\r\t\v\""\'\\\?""", 0, 26, "\0\a\b\f\n\r\t\v\"\'\\?");
+            Match(expr1, "\"\\\"\\\\\\\"\"", 0, 8, "\"\\\"");
+            Match(expr1, @"""\x4a\x4A""", 0, 10, "JJ");
+            Match(expr1, @"""\112\112""", 0, 10, "JJ");
+            Match(expr1, "\"This is \\na string\\n.\"", 0, 23, "This is \na string\n.");
+            Match(expr1, "\"\"", 0, 2, "");
+            NoMatch(expr1, "666", 0, 0, "Does not match a string literal");
+            NoMatch(expr1, "\"This is \na string\\n.\"", 0, 9, "Does not match a string literal");
+        }
+
+        [TestMethod]
+        public void StringLiteralJavaTest()
+        {
+            var expr1 = JavaStringLiteral();
+
+            Match(expr1, @"""\b\f\n\r\t\""\'\\""", 0, 18, "\b\f\n\r\t\"\'\\");
+            Match(expr1, "\"\\\"\\\\\\\"\"", 0, 8, "\"\\\"");
+            Match(expr1, @"""\112\112""", 0, 10, "JJ");
+            Match(expr1, @"""\u305f\u305F""", 0, 14, "\u305f\u305F");
+            Match(expr1, "\"This is \\na string\\n.\"", 0, 23, "This is \na string\n.");
             Match(expr1, "\"\"", 0, 2, "");
             NoMatch(expr1, "666", 0, 0, "Does not match a string literal");
             NoMatch(expr1, "\"This is \na string\\n.\"", 0, 9, "Does not match a string literal");
